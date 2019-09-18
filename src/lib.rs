@@ -222,7 +222,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 
 #[derive(Debug)]
-pub struct TestCases {
+pub struct Batch {
     runner: RefCell<Runner>,
 }
 
@@ -243,15 +243,15 @@ enum Expected {
     CompileFail,
 }
 
-impl TestCases {
+impl Batch {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        TestCases {
+        Batch {
             runner: RefCell::new(Runner { tests: Vec::new() }),
         }
     }
 
-    pub fn pass<P: AsRef<Path>>(&self, path: P) {
+    pub fn run_pass<P: AsRef<Path>>(&self, path: P) {
         self.runner.borrow_mut().tests.push(Test {
             path: path.as_ref().to_owned(),
             expected: Expected::Pass,
@@ -264,13 +264,18 @@ impl TestCases {
             expected: Expected::CompileFail,
         });
     }
+
+    // TODO error type
+    pub fn run(self) -> Result<(), String> {
+        self.runner.borrow_mut().run()
+    }
 }
 
 #[doc(hidden)]
-impl Drop for TestCases {
+impl Drop for Batch {
     fn drop(&mut self) {
         if !thread::panicking() {
-            self.runner.borrow_mut().run();
+            let _ = self.runner.borrow_mut().run();
         }
     }
 }

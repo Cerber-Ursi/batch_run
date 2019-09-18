@@ -29,14 +29,14 @@ pub struct Project {
 }
 
 impl Runner {
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> std::result::Result<(), String> {
         let mut tests = expand_globs(&self.tests);
         filter(&mut tests);
 
-        let project = self.prepare(&tests).unwrap_or_else(|err| {
+        let project = self.prepare(&tests).map_err(|err| {
             message::prepare_fail(err);
-            panic!("tests failed");
-        });
+            "tests failed"
+        })?;
 
         print!("\n\n");
 
@@ -57,8 +57,9 @@ impl Runner {
         print!("\n\n");
 
         if failures > 0 && project.name != "trybuild-tests" {
-            panic!("{} of {} tests failed", failures, len);
+            Err(format!("{} of {} tests failed", failures, len))?;
         }
+        Ok(())
     }
 
     fn prepare(&self, tests: &[ExpandedTest]) -> Result<Project> {
