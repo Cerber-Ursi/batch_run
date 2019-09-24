@@ -6,6 +6,8 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 
+// TODO parse the newest build?
+#[allow(dead_code)]
 pub fn find() -> Option<Vec<String>> {
     try_find().ok()
 }

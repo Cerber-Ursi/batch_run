@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum Error {
+    Batch(String),
     Cargo(io::Error),
     CargoFail,
     Glob(GlobError),
@@ -33,6 +34,7 @@ impl Display for Error {
         use self::Error::*;
 
         match self {
+            Batch(e) => write!(f, "Error while executing batch: {}", e),
             Cargo(e) => write!(f, "failed to execute cargo: {}", e),
             CargoFail => write!(f, "cargo reported an error"),
             Glob(e) => write!(f, "{}", e),

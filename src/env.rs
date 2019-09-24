@@ -14,6 +14,7 @@ impl Default for Update {
 }
 
 impl Update {
+    #[allow(dead_code)]
     pub fn env() -> Result<Self> {
         let var = match env::var_os("TRYBUILD") {
             Some(var) => var,

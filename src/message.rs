@@ -1,11 +1,11 @@
 use termcolor::Color::{self, *};
 
-use super::{Expected, Test};
+use super::{Entry, Expected};
 use crate::error::Error;
 use crate::normalize;
 use crate::term;
 
-use std::path::Path;
+// use std::path::Path;
 use std::process::Output;
 
 pub(crate) enum Level {
@@ -15,17 +15,17 @@ pub(crate) enum Level {
 
 pub(crate) use self::Level::*;
 
-pub(crate) fn prepare_fail(err: Error) {
-    if err.already_printed() {
-        return;
-    }
+// pub(crate) fn prepare_fail(err: Error) {
+//     if err.already_printed() {
+//         return;
+//     }
 
-    term::bold_color(Red);
-    print!("ERROR");
-    term::reset();
-    println!(": {}", err);
-    println!();
-}
+//     term::bold_color(Red);
+//     print!("ERROR");
+//     term::reset();
+//     println!(": {}", err);
+//     println!();
+// }
 
 pub(crate) fn test_fail(err: Error) {
     if err.already_printed() {
@@ -52,7 +52,7 @@ pub(crate) fn ok() {
     term::reset();
 }
 
-pub(crate) fn begin_test(test: &Test, show_expected: bool) {
+pub(crate) fn begin_test(test: &Entry, show_expected: bool) {
     let display_name = if show_expected {
         test.path
             .file_name()
@@ -69,7 +69,7 @@ pub(crate) fn begin_test(test: &Test, show_expected: bool) {
 
     if show_expected {
         match test.expected {
-            Expected::Pass => print!(" [should pass]"),
+            Expected::RunPass => print!(" [should pass]"),
             Expected::CompileFail => print!(" [should fail to compile]"),
         }
     }
@@ -93,51 +93,51 @@ pub(crate) fn should_not_have_compiled() {
     println!();
 }
 
-pub(crate) fn write_stderr_wip(wip_path: &Path, stderr_path: &Path, stderr: &str) {
-    let wip_path = wip_path.to_string_lossy();
-    let stderr_path = stderr_path.to_string_lossy();
+// pub(crate) fn write_stderr_wip(wip_path: &Path, stderr_path: &Path, stderr: &str) {
+//     let wip_path = wip_path.to_string_lossy();
+//     let stderr_path = stderr_path.to_string_lossy();
 
-    term::bold_color(Yellow);
-    println!("wip");
-    println!();
-    print!("NOTE");
-    term::reset();
-    println!(": writing the following output to `{}`.", wip_path);
-    println!(
-        "Move this file to `{}` to accept it as correct.",
-        stderr_path,
-    );
-    snippet(Yellow, stderr);
-    println!();
-}
+//     term::bold_color(Yellow);
+//     println!("wip");
+//     println!();
+//     print!("NOTE");
+//     term::reset();
+//     println!(": writing the following output to `{}`.", wip_path);
+//     println!(
+//         "Move this file to `{}` to accept it as correct.",
+//         stderr_path,
+//     );
+//     snippet(Yellow, stderr);
+//     println!();
+// }
 
-pub(crate) fn overwrite_stderr(stderr_path: &Path, stderr: &str) {
-    let stderr_path = stderr_path.to_string_lossy();
+// pub(crate) fn overwrite_stderr(stderr_path: &Path, stderr: &str) {
+//     let stderr_path = stderr_path.to_string_lossy();
 
-    term::bold_color(Yellow);
-    println!("wip");
-    println!();
-    print!("NOTE");
-    term::reset();
-    println!(": writing the following output to `{}`.", stderr_path);
-    snippet(Yellow, stderr);
-    println!();
-}
+//     term::bold_color(Yellow);
+//     println!("wip");
+//     println!();
+//     print!("NOTE");
+//     term::reset();
+//     println!(": writing the following output to `{}`.", stderr_path);
+//     snippet(Yellow, stderr);
+//     println!();
+// }
 
-pub(crate) fn mismatch(expected: &str, actual: &str) {
-    term::bold_color(Red);
-    println!("mismatch");
-    term::reset();
-    println!();
-    term::bold_color(Blue);
-    println!("EXPECTED:");
-    snippet(Blue, expected);
-    println!();
-    term::bold_color(Red);
-    println!("ACTUAL OUTPUT:");
-    snippet(Red, actual);
-    println!();
-}
+// pub(crate) fn mismatch(expected: &str, actual: &str) {
+//     term::bold_color(Red);
+//     println!("mismatch");
+//     term::reset();
+//     println!();
+//     term::bold_color(Blue);
+//     println!("EXPECTED:");
+//     snippet(Blue, expected);
+//     println!();
+//     term::bold_color(Red);
+//     println!("ACTUAL OUTPUT:");
+//     snippet(Red, actual);
+//     println!();
+// }
 
 pub(crate) fn output(warnings: &str, output: &Output) {
     let success = output.status.success();
