@@ -1,5 +1,6 @@
 [package]
 name = "batch_run"
+description = "Batch runner for arbitrary Rust files within current project"
 version = "1.0.0-alpha.1"
 authors = ["Cerberuser <k.bagrov@g.nsu.ru>"]
 edition = "2018"
