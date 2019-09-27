@@ -1,57 +1,78 @@
+use crate::mismatch::Mismatch;
 use glob::{GlobError, PatternError};
 use std::env;
 use std::ffi::OsString;
 use std::fmt::{self, Display};
 use std::io;
 use std::path::PathBuf;
+use std::collections::HashMap;
+
+pub struct BatchResult(HashMap<String, EntryOutcome>);
+
+#[derive(Debug)]
+pub enum EntryOutcome {
+    Warning(Warning),
+    Error(Error),
+}
+
+impl From<Warning> for EntryOutcome {
+    fn from(warn: Warning) -> Self {
+        Self::Warning(warn)
+    }
+}
+
+impl<T> From<T> for EntryOutcome where Error: From<T> {
+    fn from(err: T) -> Self {
+        Self::Error(err.into())
+    }
+}
+
+// TODO: what are the contents?
+#[derive(Debug)]
+pub enum Warning {
+    Wip(String),
+    Overwritten(String),
+}
 
 #[derive(Debug)]
 pub enum Error {
-    Batch(String),
     Cargo(io::Error),
     CargoFail,
     Glob(GlobError),
     Io(io::Error),
-    Metadata(serde_json::Error),
-    Mismatch,
+    Mismatch(Mismatch),
     Open(PathBuf, io::Error),
     Pattern(PatternError),
     PkgName(env::VarError),
     ProjectDir,
     ReadStderr(io::Error),
-    RunFailed,
+    RunFailed(String),
     ShouldNotHaveCompiled,
-    TomlDe(toml::de::Error),
-    TomlSer(toml::ser::Error),
     UpdateVar(OsString),
     WriteStderr(io::Error),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, EntryOutcome>;
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Error::*;
 
         match self {
-            Batch(e) => write!(f, "Error while executing batch: {}", e),
             Cargo(e) => write!(f, "failed to execute cargo: {}", e),
             CargoFail => write!(f, "cargo reported an error"),
             Glob(e) => write!(f, "{}", e),
             Io(e) => write!(f, "{}", e),
-            Metadata(e) => write!(f, "failed to read cargo metadata: {}", e),
-            Mismatch => write!(f, "compiler error does not match expected error"),
+            Mismatch(_) => write!(f, "compiler error does not match expected error"), // TODO
             Open(path, e) => write!(f, "{}: {}", path.display(), e),
             Pattern(e) => write!(f, "{}", e),
             PkgName(e) => write!(f, "failed to detect CARGO_PKG_NAME: {}", e),
             ProjectDir => write!(f, "failed to determine name of project dir"),
             ReadStderr(e) => write!(f, "failed to read stderr file: {}", e),
-            RunFailed => write!(f, "execution of the test case was unsuccessful"),
+            RunFailed(_) => write!(f, "execution of the test case was unsuccessful"), // TODO
             ShouldNotHaveCompiled => {
                 write!(f, "expected test case to fail to compile, but it succeeded")
             }
-            TomlDe(e) => write!(f, "{}", e),
-            TomlSer(e) => write!(f, "{}", e),
             UpdateVar(var) => write!(
                 f,
                 "unrecognized value of TRYBUILD: {:?}",
@@ -63,11 +84,12 @@ impl Display for Error {
 }
 
 impl Error {
+    // TODO - is this necessary?
     pub fn already_printed(&self) -> bool {
         use self::Error::*;
 
         match self {
-            CargoFail | Mismatch | RunFailed | ShouldNotHaveCompiled => true,
+            CargoFail | Mismatch(_) | RunFailed(_) | ShouldNotHaveCompiled => true,
             _ => false,
         }
     }
@@ -88,17 +110,5 @@ impl From<PatternError> for Error {
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Error::Io(err)
-    }
-}
-
-impl From<toml::de::Error> for Error {
-    fn from(err: toml::de::Error) -> Self {
-        Error::TomlDe(err)
-    }
-}
-
-impl From<toml::ser::Error> for Error {
-    fn from(err: toml::ser::Error) -> Self {
-        Error::TomlSer(err)
     }
 }

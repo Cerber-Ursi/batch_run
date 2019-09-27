@@ -1,5 +1,5 @@
 use crate::cargo_rustc;
-use crate::error::Result;
+use crate::batch_result::Result;
 use lazy_static::lazy_static;
 use rand::random;
 use std::{

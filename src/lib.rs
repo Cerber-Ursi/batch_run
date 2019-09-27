@@ -83,13 +83,12 @@
 #[macro_use]
 mod term;
 
+mod batch_result;
 mod binary;
 mod cargo_rustc;
-mod dependencies;
 mod env;
-mod error;
-mod features;
 mod message;
+mod mismatch;
 mod normalize;
 mod run;
 mod rustflags;
@@ -155,7 +154,7 @@ impl Batch {
     }
 
     // TODO error type
-    pub fn run(self) -> Result<(), error::Error> {
+    pub fn run(self) -> Result<(), batch_result::EntryOutcome> {
         self.runner.borrow_mut().run()
     }
 }

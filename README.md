@@ -41,8 +41,8 @@ file containing the expected output (same file name as the test except with a
 different extension). If it doesn't match, the program will print the error message
 with expected vs actual compiler output.
 
-Dependencies listed under `[dependencies]` in the project's Cargo.toml are
-accessible from within the batch.
+Dependencies listed under `[dependencies]` and `[dev-dependencies]` in the project's Cargo.toml
+are accessible from within the batch, just like on ordinary `cargo run`.
 
 A compile\_fail case that fails to fail to compile is also a failure.
 

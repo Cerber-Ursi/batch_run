@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::binary::BinaryBuilder;
-use crate::error::{Error, Result};
+use crate::batch_result::{Error, Result};
 use crate::rustflags;
 
 lazy_static! {
@@ -44,7 +44,7 @@ pub fn capture_build_command(bin_name: &str) -> Result<String> {
         .arg(bin_name)
         .arg("--verbose")
         .output()
-        .map_err(Error::Cargo)
+        .map_err(Error::Cargo).map_err(Into::into)
         // .map(|out| { println!("Cargo output: \"{}\"", String::from_utf8(out.clone().stderr).unwrap()); out })
         .map(extract_build_command)
         .map(trim_build_command)
@@ -68,7 +68,7 @@ fn trim_build_command(line: String) -> String {
         .to_owned()
 }
 
-pub fn build_test(builder: &BinaryBuilder, main: &Path, run: bool) -> Result<Output> {
+pub fn build_entry(builder: &BinaryBuilder, main: &Path, run: bool) -> Result<Output> {
     let mut cmd = rustc();
     builder.args_to_command(&mut cmd, main);
     cmd.arg(if run {
@@ -76,11 +76,12 @@ pub fn build_test(builder: &BinaryBuilder, main: &Path, run: bool) -> Result<Out
     } else {
         "--emit=dep-info"
     });
-    cmd.output().map_err(Error::Cargo)
+    cmd.output().map_err(Error::Cargo).map_err(Into::into)
 }
 
-pub fn run_test() -> Result<Output> {
+pub fn run_entry() -> Result<Output> {
     Command::new(&*TARGET_BIN)
         .output()
-        .map_err(|_| Error::RunFailed)
+        // TODO - impl From?
+        .map_err(|error| Error::RunFailed(error.to_string())).map_err(Into::into)
 }
