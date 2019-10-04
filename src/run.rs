@@ -3,16 +3,20 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use super::{Entry, Expected, Runner};
+use crate::batch_result::{EntryFailed, Error, NoExpected, Result};
 use crate::binary::{BinaryBuilder, PreBinary};
 use crate::cargo_rustc;
-// use crate::env::Update;
-use crate::batch_result::{Warning, Error, EntryOutcome, Result};
+use crate::config::Config;
 use crate::message::{self, Fail, Warn};
-use crate::mismatch::Mismatch;
+use crate::mismatch::SingleMismatch;
 use crate::normalize::{self, Variations};
 
 impl Runner {
     pub fn run(&mut self) -> Result<()> {
+        let config = Config::from_env()?;
+        self.run_with_config(config)
+    }
+    pub fn run_with_config(&mut self, cfg: Config) -> Result<()> {
         let binary = PreBinary::new()?;
 
         let entries = expand_globs(&self.entries);
@@ -61,6 +65,7 @@ impl Entry {
         let check = match self.expected {
             Expected::RunPass => Entry::check_pass,
             Expected::CompileFail => Entry::check_compile_fail,
+            Expected::RunFail => unimplemented!(),
         };
 
         check(self, success, stdout, stderr)
@@ -75,7 +80,7 @@ impl Entry {
         let preferred = variations.preferred();
         if !success {
             message::failed_to_build(preferred);
-            Err(Error::CargoFail)?;
+            Err(EntryFailed::ShouldCompile)?;
         }
 
         let mut output = cargo_rustc::run_entry()?;
@@ -84,7 +89,7 @@ impl Entry {
         if output.status.success() {
             Ok(())
         } else {
-            Err(Error::RunFailed(String::from_utf8_lossy(&output.stderr).to_string()))?
+            Err(EntryFailed::ShouldCompile)? // TODO
         }
     }
 
@@ -100,7 +105,7 @@ impl Entry {
             message::should_not_have_compiled();
             message::fail_output(Fail, &build_stdout);
             message::warnings(preferred);
-            Err(Error::ShouldNotHaveCompiled)?;
+            Err(EntryFailed::ShouldNotCompile)?;
         }
 
         let stderr_path = self.path.with_extension("stderr");
@@ -129,7 +134,7 @@ impl Entry {
         }
 
         let expected = fs::read_to_string(&stderr_path)
-            .map_err(Error::ReadStderr)?
+            .map_err(Error::ReadExpected)?
             .replace("\r\n", "\n");
 
         if variations.any(|stderr| expected == stderr) {
@@ -139,8 +144,8 @@ impl Entry {
 
         // match project.update {
         //     Update::Wip => {
-                message::mismatch(&expected, preferred);
-                Err(Error::Mismatch(Mismatch::new()).into())
+        message::mismatch(&expected, preferred);
+        Err(EntryFailed::Mismatch(unimplemented!()))
         //     }
         //     Update::Overwrite => {
         //         message::overwrite_stderr(&stderr_path, preferred);
@@ -164,13 +169,13 @@ fn check_exists(path: &Path) -> Result<()> {
 #[derive(Debug)]
 struct ExpandedEntry {
     raw_entry: Entry,
-    error: Option<EntryOutcome>,
+    error: Option<EntryFailed>,
 }
 
 fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
     fn glob(pattern: &str) -> Result<Vec<PathBuf>> {
         let mut paths = glob::glob(pattern)?
-            .map(|entry| entry.map_err(EntryOutcome::from))
+            .map(|entry| entry.map_err(EntryFailed::from))
             .collect::<Result<Vec<PathBuf>>>()?;
         paths.sort();
         Ok(paths)

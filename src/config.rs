@@ -14,9 +14,8 @@ impl Default for Update {
 }
 
 impl Update {
-    #[allow(dead_code)]
-    pub fn env() -> Result<Self> {
-        let var = match env::var_os("TRYBUILD") {
+    fn env() -> Result<Self> {
+        let var = match env::var_os("BATCH_RUN") {
             Some(var) => var,
             None => return Ok(Update::default()),
         };
@@ -26,5 +25,17 @@ impl Update {
             Some("overwrite") => Ok(Update::Overwrite),
             _ => Err(Error::UpdateVar(var))?,
         }
+    }
+}
+
+pub struct Config {
+    update_mode: Update,
+}
+
+impl Config {
+    pub fn from_env() -> Result<Self> {
+        Ok(Self {
+            update_mode: Update::env()?,
+        })
     }
 }

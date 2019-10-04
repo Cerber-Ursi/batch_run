@@ -1,7 +1,7 @@
 use termcolor::Color::{self, *};
 
 use super::{Entry, Expected};
-use crate::batch_result::EntryOutcome;
+use crate::batch_result::EntryFailed;
 use crate::normalize;
 use crate::term;
 
@@ -27,7 +27,7 @@ pub(crate) use self::Level::*;
 //     println!();
 // }
 
-pub(crate) fn test_fail(err: EntryOutcome) {
+pub(crate) fn test_fail(err: EntryFailed) {
     // if err.already_printed() {
     //     return;
     // }
@@ -62,7 +62,7 @@ pub(crate) fn begin_test(test: &Entry, show_expected: bool) {
         test.path.as_os_str().to_string_lossy()
     };
 
-    print!("test ");
+    print!("batch entry ");
     term::bold();
     print!("{}", display_name);
     term::reset();
@@ -70,6 +70,7 @@ pub(crate) fn begin_test(test: &Entry, show_expected: bool) {
     if show_expected {
         match test.expected {
             Expected::RunPass => print!(" [should pass]"),
+            Expected::RunFail => print!(" [should panic or return non-zero code]"),
             Expected::CompileFail => print!(" [should fail to compile]"),
         }
     }
