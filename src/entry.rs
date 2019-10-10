@@ -7,8 +7,8 @@ use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::Config;
 use crate::message::{self, Fail, Warn};
-use crate::mismatch::SingleMismatch;
 use crate::normalize::{self, Variations};
+use crate::snapshot::{check_compile_fail, check_run_match};
 
 impl Entry {
     fn run(&self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
@@ -16,19 +16,15 @@ impl Entry {
         check_exists(&self.path)?;
 
         let output = cargo_rustc::build_entry(builder, &self.path, self.expected.is_run_pass())?;
-        let success = output.status.success();
-        let stdout = output.stdout;
-        let stderr = normalize::diagnostics(output.stderr);
 
         let check = match self.expected {
-            Expected::RunPass => Entry::check_pass,
-            Expected::CompileFail => Entry::check_compile_fail,
-            Expected::RunFail => unimplemented!(),
+            Expected::RunMatch => check_run_match,
+            Expected::CompileFail => check_compile_fail,
         };
-
-        check(self, success, stdout, stderr)
+        check(&self.path, output, cfg.update_mode())
     }
 
+    #[allow(dead_code)]
     fn check_pass(
         &self,
         success: bool,
@@ -51,6 +47,7 @@ impl Entry {
         }
     }
 
+    #[allow(dead_code)]
     fn check_compile_fail(
         &self,
         success: bool,
@@ -103,7 +100,7 @@ impl Entry {
         // match project.update {
         //     Update::Wip => {
         message::mismatch(&expected, preferred);
-        Err(EntryFailed::Mismatch(unimplemented!()))
+        Err(EntryFailed::RunMismatch(unimplemented!()))
         //     }
         //     Update::Overwrite => {
         //         message::overwrite_stderr(&stderr_path, preferred);
@@ -181,5 +178,9 @@ impl ExpandedEntry {
                 Err(error)
             }
         }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.raw_entry.path
     }
 }

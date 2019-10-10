@@ -55,6 +55,8 @@ impl PreBinary {
             .scan("", |prev, cur| {
                 let out = if prev == &"-L" {
                     vec!["-L", cur]
+                } else if prev == &"--cfg" {
+                    vec!["--cfg", cur]
                 } else if prev == &"--extern" {
                     vec!["--extern", cur]
                 } else if cur.starts_with("--edition") {

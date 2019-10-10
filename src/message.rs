@@ -69,8 +69,7 @@ pub(crate) fn begin_test(test: &Entry, show_expected: bool) {
 
     if show_expected {
         match test.expected {
-            Expected::RunPass => print!(" [should pass]"),
-            Expected::RunFail => print!(" [should panic or return non-zero code]"),
+            Expected::RunMatch => print!(" [should run and generate output]"),
             Expected::CompileFail => print!(" [should fail to compile]"),
         }
     }
