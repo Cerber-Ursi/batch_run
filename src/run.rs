@@ -17,6 +17,13 @@ impl Runner {
         self.run_with_config(config)
     }
     pub fn run_with_config(&mut self, cfg: Config) -> Result<()> {
+        let cwd = std::env::current_dir()?;
+        std::env::set_current_dir(std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"))?;
+        let res = self.run_impl(cfg);
+        std::env::set_current_dir(cwd)?;
+        res
+    }
+    fn run_impl(&mut self, cfg: Config) -> Result<()> {
         let binary = PreBinary::new()?;
 
         let entries = expand_globs(&self.entries);
