@@ -1,3 +1,5 @@
+use crate::batch_result::{BatchError, BatchResult};
+use crate::batch_result::{EntryError, EntryResult};
 use lazy_static::lazy_static;
 use std::{
     env::{consts::EXE_EXTENSION, var_os},
@@ -5,7 +7,6 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::batch_result::{Error, Result};
 use crate::binary::BinaryBuilder;
 use crate::rustflags;
 
@@ -32,7 +33,7 @@ fn rustc() -> Command {
     cmd
 }
 
-pub fn capture_build_command(bin_name: &str) -> Result<String> {
+pub fn capture_build_command(bin_name: &str) -> BatchResult<String> {
     let mut cmd = raw_cargo();
     cmd.current_dir(var_os("CARGO_MANIFEST_DIR").unwrap());
     rustflags::set_env(&mut cmd);
@@ -44,7 +45,7 @@ pub fn capture_build_command(bin_name: &str) -> Result<String> {
         .arg(bin_name)
         .arg("--verbose")
         .output()
-        .map_err(Error::Cargo)
+        .map_err(BatchError::Cargo)
         .map_err(Into::into)
         // .map(|out| { println!("Cargo output: \"{}\"", String::from_utf8(out.clone().stderr).unwrap()); out })
         .map(extract_build_command)
@@ -69,7 +70,7 @@ fn trim_build_command(line: String) -> String {
         .to_owned()
 }
 
-pub fn build_entry(builder: &BinaryBuilder, main: &Path, run: bool) -> Result<Output> {
+pub fn build_entry(builder: &BinaryBuilder, main: &Path, run: bool) -> EntryResult<Output> {
     let mut cmd = rustc();
     builder.args_to_command(&mut cmd, main);
     cmd.arg(if run {
@@ -77,12 +78,12 @@ pub fn build_entry(builder: &BinaryBuilder, main: &Path, run: bool) -> Result<Ou
     } else {
         "--emit=dep-info"
     });
-    cmd.output().map_err(Error::Cargo).map_err(Into::into)
+    cmd.output().map_err(EntryError::Rustc).map_err(Into::into)
 }
 
-pub fn run_entry() -> Result<Output> {
+pub fn run_entry() -> EntryResult<Output> {
     Command::new(&*TARGET_BIN)
         .output()
-        .map_err(Error::RunFailed)
+        .map_err(EntryError::RunFailed)
         .map_err(Into::into)
 }

@@ -1,4 +1,4 @@
-use crate::batch_result::Result;
+use crate::batch_result::BatchResult;
 use crate::cargo_rustc;
 use lazy_static::lazy_static;
 use rand::random;
@@ -16,7 +16,9 @@ lazy_static! {
         var_os("CARGO_MANIFEST_DIR").unwrap(),
         OsString::from("src"),
         OsString::from("bin")
-    ].into_iter().collect();
+    ]
+    .into_iter()
+    .collect();
 }
 
 pub struct PreBinary {
@@ -25,7 +27,7 @@ pub struct PreBinary {
 }
 
 impl PreBinary {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> BatchResult<Self> {
         let bin_needed = BIN_DIR.exists().not();
         let bin_created = bin_needed && create_dir(&*BIN_DIR).map(|_| true)?;
         let mut name = "batch_runner_check_".to_owned();
@@ -45,7 +47,7 @@ impl PreBinary {
         Ok(PreBinary { name, bin_created })
     }
 
-    pub fn into_builder(self) -> Result<BinaryBuilder> {
+    pub fn into_builder(self) -> BatchResult<BinaryBuilder> {
         let cmd = cargo_rustc::capture_build_command(&self.name)?;
 
         let args = cmd

@@ -1,9 +1,8 @@
-use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use super::{Entry, Expected, Runner};
-use crate::batch_result::{EntryFailed, Error, NoExpected, Result};
+use crate::batch_result::{BatchResult, BatchRunResult, EntryError, EntryFailed, EntryResult};
 use crate::binary::{BinaryBuilder, PreBinary};
 use crate::cargo_rustc;
 use crate::config::Config;
@@ -12,18 +11,20 @@ use crate::mismatch::SingleMismatch;
 use crate::normalize::{self, Variations};
 
 impl Runner {
-    pub fn run(&mut self) -> Result<()> {
+    pub fn run(&mut self) -> BatchResult<BatchRunResult> {
         let config = Config::from_env()?;
         self.run_with_config(config)
     }
-    pub fn run_with_config(&mut self, cfg: Config) -> Result<()> {
+    pub fn run_with_config(&mut self, cfg: Config) -> BatchResult<BatchRunResult> {
         let cwd = std::env::current_dir()?;
-        std::env::set_current_dir(std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"))?;
+        std::env::set_current_dir(
+            std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"),
+        )?;
         let res = self.run_impl(cfg);
         std::env::set_current_dir(cwd)?;
         res
     }
-    fn run_impl(&mut self, cfg: Config) -> Result<()> {
+    fn run_impl(&mut self, cfg: Config) -> BatchResult<BatchRunResult> {
         let binary = PreBinary::new()?;
 
         let entries = expand_globs(&self.entries);
@@ -55,12 +56,12 @@ impl Runner {
             // )))?;
             // TODO
         }
-        Ok(())
+        Ok(BatchRunResult::NoEntries) // FIXME
     }
 }
 
 impl Entry {
-    fn run(&self, builder: &BinaryBuilder) -> Result<()> {
+    fn run(&self, builder: &BinaryBuilder) -> EntryResult<()> {
         message::begin_test(self, true); // TODO
         check_exists(&self.path)?;
 
@@ -83,7 +84,7 @@ impl Entry {
         success: bool,
         build_stdout: Vec<u8>,
         variations: Variations,
-    ) -> Result<()> {
+    ) -> EntryResult<()> {
         let preferred = variations.preferred();
         if !success {
             message::failed_to_build(preferred);
@@ -105,7 +106,7 @@ impl Entry {
         success: bool,
         build_stdout: Vec<u8>,
         variations: Variations,
-    ) -> Result<()> {
+    ) -> EntryResult<()> {
         let preferred = variations.preferred();
 
         if success {
@@ -141,7 +142,7 @@ impl Entry {
         }
 
         let expected = fs::read_to_string(&stderr_path)
-            .map_err(Error::ReadExpected)?
+            .map_err(EntryError::ReadExpected)?
             .replace("\r\n", "\n");
 
         if variations.any(|stderr| expected == stderr) {
@@ -163,13 +164,13 @@ impl Entry {
     }
 }
 
-fn check_exists(path: &Path) -> Result<()> {
+fn check_exists(path: &Path) -> EntryResult<()> {
     if path.exists() {
         return Ok(());
     }
     match File::open(path) {
         Ok(_) => Ok(()),
-        Err(err) => Err(Error::Open(path.to_owned(), err))?,
+        Err(err) => Err(EntryError::Open(path.to_owned(), err))?,
     }
 }
 
@@ -180,10 +181,10 @@ struct ExpandedEntry {
 }
 
 fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
-    fn glob(pattern: &str) -> Result<Vec<PathBuf>> {
+    fn glob(pattern: &str) -> EntryResult<Vec<PathBuf>> {
         let mut paths = glob::glob(pattern)?
             .map(|entry| entry.map_err(EntryFailed::from))
-            .collect::<Result<Vec<PathBuf>>>()?;
+            .collect::<EntryResult<Vec<PathBuf>>>()?;
         paths.sort();
         Ok(paths)
     }
@@ -221,7 +222,7 @@ fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 }
 
 impl ExpandedEntry {
-    fn run_on(self, builder: &BinaryBuilder) -> Result<()> {
+    fn run_on(self, builder: &BinaryBuilder) -> EntryResult<()> {
         match self.error {
             None => self.raw_entry.run(builder),
             Some(error) => {
