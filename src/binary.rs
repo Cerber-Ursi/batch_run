@@ -3,6 +3,8 @@ use crate::error::Result;
 use lazy_static::lazy_static;
 use rand::random;
 use std::{
+    env::var_os,
+    ffi::OsString,
     fs::{create_dir, remove_dir, remove_file, write},
     ops::Not,
     path::{Path, PathBuf},
@@ -10,7 +12,11 @@ use std::{
 };
 
 lazy_static! {
-    static ref BIN_DIR: PathBuf = [".", "src", "bin"].into_iter().collect();
+    static ref BIN_DIR: PathBuf = [
+        var_os("CARGO_MANIFEST_DIR").unwrap(),
+        OsString::from("src"),
+        OsString::from("bin")
+    ].into_iter().collect();
 }
 
 pub struct PreBinary {
