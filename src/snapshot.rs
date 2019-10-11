@@ -63,10 +63,6 @@ pub fn check_compile_fail(path: &Path, output: Output, update_mode: Update) -> E
 }
 
 pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> EntryResult<()> {
-    // early exit if the entry has not compiled
-    if !output.status.success() {
-        Err(EntryFailed::ShouldCompile)?;
-    }
     // TODO propagate error
     let output: LocalOutput = output.try_into().expect("No status code");
 

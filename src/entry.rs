@@ -19,6 +19,12 @@ impl Entry {
 
         let check = match self.expected {
             Expected::RunMatch => {
+                // early exit if the entry has not compiled
+                if !output.status.success() {
+                    Err(EntryFailed::ShouldCompile(
+                        String::from_utf8_lossy(&output.stderr).to_string(),
+                    ))?;
+                }
                 output = cargo_rustc::run_entry()?;
                 check_run_match
             }
