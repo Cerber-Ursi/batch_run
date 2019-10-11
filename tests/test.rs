@@ -18,5 +18,5 @@ fn test() {
     // //    t.run_match("tests/ui/run-fail.rs"); - run-fail?
     // t.run_match("tests/ui/run-pass-9.rs");
     t.compile_fail("tests/ui/compile-fail-2.rs");
-    t.run().unwrap();
+    t.run().unwrap().assert_all_ok();
 }

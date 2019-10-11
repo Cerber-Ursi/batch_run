@@ -94,8 +94,7 @@ mod runner;
 mod rustflags;
 mod snapshot;
 
-use crate::batch_result::BatchResult;
-use crate::batch_result::BatchRunResult;
+pub use crate::batch_result::*;
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};

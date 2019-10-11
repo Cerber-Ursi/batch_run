@@ -1,7 +1,7 @@
 use std::process::Output;
 
 #[derive(Debug)]
-struct SingleMismatch<T = String> {
+struct SingleMismatch<T = String> where T: Clone {
     expected: T,
     actual: T,
 }
