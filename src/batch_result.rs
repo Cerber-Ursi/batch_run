@@ -2,7 +2,6 @@ use crate::mismatch::{CompileFailMismatch, RunMismatch};
 use glob::{GlobError, PatternError};
 use std::collections::HashMap;
 use std::ffi::OsString;
-use std::fmt::{self, Display};
 use std::io;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -16,7 +15,11 @@ pub type BatchResult<T = BatchRunResult> = std::result::Result<T, BatchError>;
 impl BatchRunResult {
     pub fn errors(&self) -> Option<Vec<(&String, &EntryFailed)>> {
         if let BatchRunResult::ResultsMap(map) = self {
-            Some(map.iter().filter_map(|(file, res)| res.as_ref().err().map(|err| (file, err))).collect())
+            Some(
+                map.iter()
+                    .filter_map(|(file, res)| res.as_ref().err().map(|err| (file, err)))
+                    .collect(),
+            )
         } else {
             None
         }
@@ -68,73 +71,39 @@ pub enum NoExpected {
 
 #[derive(Debug, Error)]
 pub enum BatchError {
-//    #[error("Cargo has not finished successfully")]
+    #[error("led to execute cargo: {0}")]
     Cargo(#[source] io::Error),
-//    #[error("General IO error")]
+    #[error("General IO error: {0}")]
     Io(#[source] io::Error),
-//    #[error("Incorrect value of BATCH_RUN environmental variable: expected either \"Overwrite\" or \"Wip\", got {0}")]
+    #[error("Incorrect value of BATCH_RUN environmental variable: expected either \"Overwrite\" or \"Wip\", got {}", .0.to_string_lossy())]
     UpdateVar(OsString),
 }
 
 #[derive(Debug, Error)]
 pub enum EntryError {
-//    #[error("Rustc has not finished successfully")]
+    #[error("Failed to execute rustc: {0}")]
     Rustc(#[source] io::Error),
     // TODO - is it used/necessary?
-//    #[error("Cargo failed to run")]
+    #[error("Cargo reported an error")]
     CargoFail,
-//    #[error("Incorrect glob provided")]
+    #[error("Error executing glob: {0}")]
     Glob(#[source] GlobError),
-//    #[error("General IO error")]
+    #[error("General IO error: {0}")]
     Io(#[source] io::Error),
-//    #[error("Unable to open provided path: {0}")]
+    #[error("Unable to open provided path: {}, error: {}", .0.display(), .1)]
     Open(PathBuf, #[source] io::Error),
     // TODO - is it used/necessary?
-//    #[error("Incorrect pattern")]
+    #[error("Incorrect glob pattern: {0}")]
     Pattern(#[source] PatternError),
-//    #[error("Error reading snapshot")]
+    #[error("Error reading snapshot: {0}")]
     ReadExpected(#[source] io::Error),
-//    #[error("Cannot execute compiled binary")]
+    #[error("Cannot execute compiled binary: {0}")]
     RunFailed(#[source] io::Error),
-//    #[error("Error writing snapshot")]
+    #[error("Error writing snapshot: {0}")]
     WriteExpected(#[source] io::Error),
 }
 
 pub type EntryResult<T = ()> = std::result::Result<T, EntryFailed>;
-
-impl Display for EntryError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::EntryError::*;
-
-        match self {
-            Rustc(e) => write!(f, "failed to execute rustc: {}", e),
-            CargoFail => write!(f, "cargo reported an error"),
-            Glob(e) => write!(f, "{}", e),
-            Io(e) => write!(f, "{}", e),
-            Open(path, e) => write!(f, "{}: {}", path.display(), e),
-            Pattern(e) => write!(f, "{}", e),
-            ReadExpected(e) => write!(f, "failed to read stderr file: {}", e),
-            RunFailed(_) => unimplemented!(),
-            WriteExpected(e) => write!(f, "failed to write stderr file: {}", e),
-        }
-    }
-}
-
-impl Display for BatchError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::BatchError::*;
-
-        match self {
-            Cargo(e) => write!(f, "failed to execute cargo: {}", e),
-            UpdateVar(var) => write!(
-                f,
-                "unrecognized value of BATCH_RUN: {:?}",
-                var.to_string_lossy(),
-            ),
-            Io(e) => write!(f, "{}", e),
-        }
-    }
-}
 
 impl From<io::Error> for BatchError {
     fn from(err: io::Error) -> Self {

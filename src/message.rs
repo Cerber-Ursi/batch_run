@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use termcolor::Color::{self, *};
 
 use super::{Entry, Expected};
@@ -27,7 +29,7 @@ pub(crate) use self::Level::*;
 //     println!();
 // }
 
-pub(crate) fn test_fail(err: EntryFailed) {
+pub(crate) fn test_fail(_: EntryFailed) {
     // if err.already_printed() {
     //     return;
     // }
