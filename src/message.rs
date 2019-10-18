@@ -1,14 +1,19 @@
 #![allow(dead_code)]
 
-use termcolor::Color::{self, *};
+use termcolor::{
+    Buffer,
+    Color::{self, *},
+};
+use termcolor_output::colored;
 
-use super::{Entry, Expected};
+use super::Expected;
 use crate::batch_result::EntryFailed;
+use crate::entry::SingleEntry;
 use crate::normalize;
 use crate::term;
 
-// use std::path::Path;
-use std::process::Output;
+use std::path::Path;
+use std::io;
 
 pub(crate) enum Level {
     Fail,
@@ -17,115 +22,85 @@ pub(crate) enum Level {
 
 pub(crate) use self::Level::*;
 
-// pub(crate) fn prepare_fail(err: Error) {
-//     if err.already_printed() {
-//         return;
-//     }
-
-//     term::bold_color(Red);
-//     print!("ERROR");
-//     term::reset();
-//     println!(": {}", err);
-//     println!();
-// }
-
-pub(crate) fn test_fail(_: EntryFailed) {
-    // if err.already_printed() {
-    //     return;
-    // }
-
-    term::bold_color(Red);
-    println!("error");
-    term::color(Red);
-    // println!("{}", err);
-    term::reset();
-    println!();
+pub(crate) fn entry_failed(buf: &mut Buffer, err: EntryFailed) -> io::Result<()> {
+    colored!(
+        buf,
+        "{}{}error\n{}{}\n",
+        bold!(true),
+        fg!(Some(Red)),
+        bold!(false),
+        err
+    )
 }
 
-pub(crate) fn no_tests_enabled() {
-    term::color(Yellow);
-    println!("There are no tests enabled yet.");
-    term::reset();
+// This function is called if there are no entries, so it will output directly to screen, without
+// receiving buffer from caller.
+pub(crate) fn no_entries() -> io::Result<()> {
+    let mut out = term::direct();
+    colored!(
+        out,
+        "{}{}No entries were provided to runner. Maybe the files are not created yet, or the glob path is wrong.\n{}",
+        reset!(), fg!(Some(Yellow)), reset!()
+    )
 }
 
-pub(crate) fn ok() {
-    term::color(Green);
-    println!("ok");
-    term::reset();
+pub(crate) fn ok(buf: &mut Buffer) -> io::Result<()> {
+    colored!(buf, "{}ok\n", fg!(Some(Green)))
 }
 
-pub(crate) fn begin_test(test: &Entry, show_expected: bool) {
+pub(crate) fn begin_entry(entry: &mut SingleEntry, show_expected: bool) -> io::Result<()> {
     let display_name = if show_expected {
-        test.path
+        entry.path
             .file_name()
-            .unwrap_or_else(|| test.path.as_os_str())
+            .unwrap_or_else(|| entry.path.as_os_str())
             .to_string_lossy()
     } else {
-        test.path.as_os_str().to_string_lossy()
+        entry.path.as_os_str().to_string_lossy()
+    }.to_string();
+    let expected = if show_expected {
+        match entry.expected {
+            Expected::RunMatch => " [should run and generate output]",
+            Expected::CompileFail => " [should fail to compile]",
+        }
+    } else {
+        ""
     };
 
-    print!("batch entry ");
-    term::bold();
-    print!("{}", display_name);
-    term::reset();
-
-    if show_expected {
-        match test.expected {
-            Expected::RunMatch => print!(" [should run and generate output]"),
-            Expected::CompileFail => print!(" [should fail to compile]"),
-        }
-    }
-
-    print!(" ... ");
+    colored!(entry.buf, "{}batch entry {}{}{}{}", reset!(), bold!(true), display_name, bold!(false), expected)
 }
 
-pub(crate) fn failed_to_build(stderr: &str) {
-    term::bold_color(Red);
-    println!("error");
-    snippet(Red, stderr);
-    println!();
+pub(crate) fn write_stderr_wip(buf: &mut Buffer, wip_path: &Path, stderr_path: &Path, stderr: &str) -> io::Result<()> {
+    let wip_path = wip_path.to_string_lossy();
+    let stderr_path = stderr_path.to_string_lossy();
+
+    colored!(
+        buf,
+        "{}{}wip\n\nNOTE{}: writing the following output to `{}`.\nMove this file to {} to accept it as correct.\n",
+        reset!(),
+        fg!(Some(Yellow)),
+        reset!(),
+        wip_path,
+        stderr_path,
+    )?;
+    snippet(buf, Yellow, stderr)?;
+    colored!(buf, "\n")
 }
 
-pub(crate) fn should_not_have_compiled() {
-    term::bold_color(Red);
-    println!("error");
-    term::color(Red);
-    println!("Expected test case to fail to compile, but it succeeded.");
-    term::reset();
-    println!();
+pub(crate) fn overwrite_stderr(buf: &mut Buffer, stderr_path: &Path, stderr: &str) -> io::Result<()> {
+    let stderr_path = stderr_path.to_string_lossy();
+
+    colored!(
+        buf, 
+        "{}{}wip\n\nNOTE{}: writing the following output to {}.\n",
+        reset!(),
+        fg!(Some(Yellow)),
+        reset!(),
+        stderr_path
+    )?;
+    snippet(buf, Yellow, stderr)?;
+    colored!(buf, "\n")
 }
-
-// pub(crate) fn write_stderr_wip(wip_path: &Path, stderr_path: &Path, stderr: &str) {
-//     let wip_path = wip_path.to_string_lossy();
-//     let stderr_path = stderr_path.to_string_lossy();
-
-//     term::bold_color(Yellow);
-//     println!("wip");
-//     println!();
-//     print!("NOTE");
-//     term::reset();
-//     println!(": writing the following output to `{}`.", wip_path);
-//     println!(
-//         "Move this file to `{}` to accept it as correct.",
-//         stderr_path,
-//     );
-//     snippet(Yellow, stderr);
-//     println!();
-// }
-
-// pub(crate) fn overwrite_stderr(stderr_path: &Path, stderr: &str) {
-//     let stderr_path = stderr_path.to_string_lossy();
-
-//     term::bold_color(Yellow);
-//     println!("wip");
-//     println!();
-//     print!("NOTE");
-//     term::reset();
-//     println!(": writing the following output to `{}`.", stderr_path);
-//     snippet(Yellow, stderr);
-//     println!();
-// }
-
+/* TODO - I'll probably want to implement it on `Mismatch` itself
 pub(crate) fn mismatch(expected: &str, actual: &str) {
     term::bold_color(Red);
     println!("mismatch");
@@ -140,86 +115,33 @@ pub(crate) fn mismatch(expected: &str, actual: &str) {
     snippet(Red, actual);
     println!();
 }
+*/
 
-pub(crate) fn output(warnings: &str, output: &Output) {
-    let success = output.status.success();
-    let stdout = normalize::trim(&output.stdout);
-    let stderr = normalize::trim(&output.stderr);
-    let has_output = !stdout.is_empty() || !stderr.is_empty();
-
-    if success {
-        ok();
-        if has_output || !warnings.is_empty() {
-            println!();
-        }
-    } else {
-        term::bold_color(Red);
-        println!("error");
-        term::color(Red);
-        if has_output {
-            println!("Test case failed at runtime.");
-        } else {
-            println!("Execution of the test case was unsuccessful but there was no output.");
-        }
-        term::reset();
-        println!();
-    }
-
-    self::warnings(warnings);
-
-    let color = if success { Yellow } else { Red };
-
-    for (name, content) in &[("STDOUT", stdout), ("STDERR", stderr)] {
-        if !content.is_empty() {
-            term::bold_color(color);
-            println!("{}:", name);
-            snippet(color, &normalize::trim(content));
-            println!();
-        }
-    }
-}
-
-pub(crate) fn fail_output(level: Level, stdout: &[u8]) {
+pub(crate) fn fail_output(buf: &mut Buffer, level: Level, stdout: &[u8]) -> io::Result<()> {
     let color = match level {
         Fail => Red,
         Warn => Yellow,
     };
 
     if !stdout.is_empty() {
-        term::bold_color(color);
-        println!("STDOUT:");
-        snippet(color, &normalize::trim(stdout));
-        println!();
+        colored!(buf, "{}{}STDOUT:", bold!(true), fg!(Some(color)))?;
+        snippet(buf, color, &normalize::trim(stdout))?;
+        colored!(buf, "\n")?;
     }
+    Ok(())
 }
 
-pub(crate) fn warnings(warnings: &str) {
-    if warnings.is_empty() {
-        return;
-    }
+fn snippet(buf: &mut Buffer, color: Color, content: &str) -> io::Result<()> {
+    let dotted_line = "┈".repeat(60);
 
-    term::bold_color(Yellow);
-    println!("WARNINGS:");
-    snippet(Yellow, warnings);
-    println!();
-}
-
-fn snippet(color: Color, content: &str) {
-    fn dotted_line() {
-        println!("{}", "┈".repeat(60));
-    }
-
-    term::color(color);
-    dotted_line();
+    colored!(buf, "{}{}{}", reset!(), fg!(Some(color)), dotted_line)?;
 
     // Color one line at a time because Travis does not preserve color setting
     // across output lines.
     for line in content.lines() {
-        term::color(color);
-        println!("{}", line);
+        colored!(buf, "{}{}\n", fg!(Some(color)), line)?;
     }
 
-    term::color(color);
-    dotted_line();
-    term::reset();
+    colored!(buf, "{}{}{}{}", reset!(), fg!(Some(color)), dotted_line, reset!())
 }
+

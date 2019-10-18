@@ -1,3 +1,5 @@
+use termcolor::Buffer;
+
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
@@ -6,12 +8,22 @@ use crate::batch_result::{EntryError, EntryFailed, EntryResult};
 use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::Config;
-use crate::message;
+//use crate::message;
 use crate::snapshot::{check_compile_fail, check_run_match};
+use crate::term::buf;
 
 impl Entry {
+    fn with_path(&self, path: PathBuf) -> Self {
+        Self {
+            path,
+            ..self.clone()
+        }
+    }
+}
+
+impl SingleEntry {
     fn run(&self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
-        message::begin_test(self, true); // TODO
+//        message::begin_entry(self, true); // TODO
         check_exists(&self.path)?;
 
         let mut output =
@@ -44,9 +56,23 @@ fn check_exists(path: &Path) -> EntryResult<()> {
     }
 }
 
-#[derive(Debug)]
+pub struct SingleEntry {
+    pub buf: Buffer,
+    pub path: PathBuf,
+    pub(crate) expected: Expected,
+}
+impl From<Entry> for SingleEntry {
+    fn from(input: Entry) -> Self {
+        Self {
+            buf: buf(),
+            path: input.path,
+            expected: input.expected,
+        }
+    }
+}
+
 pub struct ExpandedEntry {
-    raw_entry: Entry,
+    raw_entry: SingleEntry,
     error: Option<EntryFailed>,
 }
 
@@ -63,7 +89,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 
     for test in tests {
         let mut expanded = ExpandedEntry {
-            raw_entry: test.clone(),
+            raw_entry: test.clone().into(),
             error: None,
         };
         if let Some(utf8) = test.path.to_str() {
@@ -72,10 +98,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
                     Ok(paths) => {
                         for path in paths {
                             vec.push(ExpandedEntry {
-                                raw_entry: Entry {
-                                    path,
-                                    expected: expanded.raw_entry.expected,
-                                },
+                                raw_entry: test.with_path(path).into(),
                                 error: None,
                             });
                         }
@@ -97,7 +120,7 @@ impl ExpandedEntry {
             None => self.raw_entry.run(builder, cfg),
             Some(error) => {
                 let show_expected = false;
-                message::begin_test(&self.raw_entry, show_expected);
+  //              message::begin_entry(&self.raw_entry, show_expected);
                 Err(error)
             }
         }
@@ -107,3 +130,4 @@ impl ExpandedEntry {
         &self.raw_entry.path
     }
 }
+

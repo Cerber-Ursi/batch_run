@@ -3,7 +3,7 @@ use crate::batch_result::{BatchResult, BatchRunResult};
 use crate::binary::PreBinary;
 use crate::config::Config;
 use crate::entry::expand_globs;
-use crate::message;
+//use crate::message;
 
 impl Runner {
     pub fn run(&mut self) -> BatchResult<BatchRunResult> {
@@ -28,11 +28,8 @@ impl Runner {
 
         print!("\n\n");
 
-        // let len = entries.len();
-        // let mut failures = 0;
-
         if entries.is_empty() {
-            message::no_tests_enabled();
+  //          message::no_tests_enabled();
             Ok(BatchRunResult::NoEntries)
         } else {
             // for entry in entries {
