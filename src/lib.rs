@@ -79,9 +79,6 @@
 //! (TODO)
 //!
 
-#[macro_use]
-mod term;
-
 mod batch_result;
 mod binary;
 mod cargo_rustc;
@@ -93,16 +90,18 @@ mod normalize;
 mod runner;
 mod rustflags;
 mod snapshot;
+mod term;
 
 pub use crate::batch_result::*;
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
-// use std::thread;
+use std::thread;
 
 #[derive(Debug)]
 pub struct Batch {
     runner: RefCell<Runner>,
+    has_run: bool,
 }
 
 #[derive(Debug)]
@@ -139,6 +138,7 @@ impl Batch {
             runner: RefCell::new(Runner {
                 entries: Vec::new(),
             }),
+            has_run: false,
         }
     }
 
@@ -156,20 +156,20 @@ impl Batch {
         });
     }
 
-    // TODO error type
     pub fn run(self) -> BatchResult<BatchRunResult> {
         self.runner.borrow_mut().run()
     }
 }
 
-// #[doc(hidden)]
-// impl Drop for Batch {
-//     fn drop(&mut self) {
-//         if !thread::panicking() {
-//             self.runner
-//                 .borrow_mut()
-//                 .run()
-//                 .unwrap_or_else(|err| println!("{}", err));
-//         }
-//     }
-// }
+#[doc(hidden)]
+impl Drop for Batch {
+    fn drop(&mut self) {
+        if !thread::panicking() && !self.has_run {
+            self.runner
+                .borrow_mut()
+                .run()
+                .map(|_| ())
+                .unwrap_or_else(|err| println!("{}", err));
+        }
+    }
+}
