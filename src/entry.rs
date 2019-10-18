@@ -1,16 +1,18 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use termcolor::Buffer;
 
 use super::{Entry, Expected};
-use crate::batch_result::{EntryError, EntryFailed, EntryResult};
+use crate::batch_result::{EntryError, EntryFailed, EntryOutput, EntryResult};
 use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::Config;
 use crate::message;
 use crate::snapshot::{check_compile_fail, check_run_match};
+use crate::term;
 
 impl Entry {
-    fn run(&self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
+    fn run(&self, builder: &BinaryBuilder, cfg: &Config, output: &mut Buffer) -> EntryResult<()> {
         message::begin_test(self, true); // TODO
         check_exists(&self.path)?;
 
@@ -44,8 +46,8 @@ fn check_exists(path: &Path) -> EntryResult<()> {
     }
 }
 
-#[derive(Debug)]
 pub struct ExpandedEntry {
+    messages: Buffer,
     raw_entry: Entry,
     error: Option<EntryFailed>,
 }
@@ -65,6 +67,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
         let mut expanded = ExpandedEntry {
             raw_entry: test.clone(),
             error: None,
+            messages: term::buf(),
         };
         if let Some(utf8) = test.path.to_str() {
             if utf8.contains('*') {
@@ -77,6 +80,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
                                     expected: expanded.raw_entry.expected,
                                 },
                                 error: None,
+                                messages: term::buf(),
                             });
                         }
                         continue;
@@ -92,9 +96,16 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 }
 
 impl ExpandedEntry {
-    pub fn run(self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
+    pub fn run(self, builder: &BinaryBuilder, cfg: &Config) -> EntryOutput {
+        let res = self.run_impl(builder, cfg);
+        EntryOutput {
+            res,
+            buf: self.messages,
+        }
+    }
+    fn run_impl(&mut self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
         match self.error {
-            None => self.raw_entry.run(builder, cfg),
+            None => self.raw_entry.run(builder, cfg, &mut self.messages),
             Some(error) => {
                 let show_expected = false;
                 message::begin_test(&self.raw_entry, show_expected);

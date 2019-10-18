@@ -28,32 +28,21 @@ impl Runner {
 
         print!("\n\n");
 
-        // let len = entries.len();
-        // let mut failures = 0;
-
         if entries.is_empty() {
             message::no_tests_enabled();
             Ok(BatchRunResult::NoEntries)
         } else {
-            // for entry in entries {
-            //     if let Err(err) = entry.run(&builder, &cfg) {
-            //         failures += 1;
-            //         message::test_fail(err);
-            //     }
-            // }
-            Ok(BatchRunResult::ResultsMap(entries.into_iter().map(|entry| {
-                (entry.path().display().to_string(), entry.run(&builder, &cfg))
-            }).collect()))
+            Ok(BatchRunResult::ResultsMap(
+                entries
+                    .into_iter()
+                    .map(|entry| {
+                        (
+                            entry.path().display().to_string(),
+                            entry.run(&builder, &cfg),
+                        )
+                    })
+                    .collect(),
+            ))
         }
-
-        // print!("\n\n");
-
-        // if failures > 0 {
-        //     // Err(Error::Batch(format!(
-        //     //     "{} of {} tests failed",
-        //     //     failures, len
-        //     // )))?;
-        //     // TODO
-        // }
     }
 }
