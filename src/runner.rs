@@ -29,7 +29,7 @@ impl Runner {
         print!("\n\n");
 
         if entries.is_empty() {
-  //          message::no_tests_enabled();
+//            message::no_tests_enabled();
             Ok(BatchRunResult::NoEntries)
         } else {
             // for entry in entries {
