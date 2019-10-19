@@ -1,5 +1,5 @@
-use crate::batch_result::{BatchError, BatchResult};
-use crate::batch_result::{EntryError, EntryResult};
+use crate::result::{error::BatchError, BatchResult};
+use crate::result::{error::EntryError, EntryResult};
 use lazy_static::lazy_static;
 use std::{
     env::{consts::EXE_EXTENSION, var_os},

@@ -1,4 +1,4 @@
-use crate::batch_result::BatchResult;
+use crate::result::BatchResult;
 use crate::cargo_rustc;
 use lazy_static::lazy_static;
 use rand::random;

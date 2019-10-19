@@ -3,8 +3,7 @@ use termcolor::Buffer;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use super::{Entry, Expected};
-use crate::batch_result::{EntryError, EntryFailed, EntryOutput, EntryResult};
+use crate::result::{error::{EntryError, EntryFailed}, EntryOutput, EntryResult};
 use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::Config;
@@ -12,10 +11,39 @@ use crate::message;
 use crate::snapshot::{check_compile_fail, check_run_match};
 use crate::term;
 
+#[derive(Copy, Clone, Debug)]
+pub enum Expected {
+    RunMatch,
+    CompileFail,
+}
+
+impl Expected {
+    pub fn is_run_pass(self) -> bool {
+        use Expected::*;
+        match self {
+            RunMatch => true,
+            CompileFail => false,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Entry {
+    path: PathBuf,
+    expected: Expected,
+}
+
 impl Entry {
+    pub fn new<P: AsRef<Path>>(path: P, expected: Expected) -> Self {
+        Self {
+            path: path.as_ref().to_owned(),
+            expected,
+        }
+    }
+
     fn run(&self, builder: &BinaryBuilder, cfg: &Config, output: &mut Buffer) -> EntryResult<()> {
         message::begin_entry(self, output, true)?; // TODO
-        check_exists(&self.path)?;
+        self.try_open()?;
 
         let mut output =
             cargo_rustc::build_entry(builder, &self.path, self.expected.is_run_pass())?;
@@ -35,15 +63,21 @@ impl Entry {
         };
         check(&self.path, output, cfg.update_mode())
     }
-}
 
-fn check_exists(path: &Path) -> EntryResult<()> {
-    if path.exists() {
+fn try_open(&self) -> EntryResult<()> {
+    if self.path.exists() {
         return Ok(());
     }
-    match File::open(path) {
+    match File::open(&self.path) {
         Ok(_) => Ok(()),
-        Err(err) => Err(EntryError::Open(path.to_owned(), err).into()),
+        Err(err) => Err(EntryError::Open(self.path.clone(), err).into()),
+    }
+}
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+    pub fn expected(&self) -> Expected {
+        self.expected
     }
 }
 

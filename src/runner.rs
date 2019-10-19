@@ -1,11 +1,23 @@
-use super::Runner;
-use crate::batch_result::{BatchResult, BatchRunResult};
+use crate::result::{BatchResult, BatchRunResult};
 use crate::binary::PreBinary;
 use crate::config::Config;
-use crate::entry::expand_globs;
-//use crate::message;
+use crate::entry::{Entry, expand_globs};
+use crate::message;
+
+#[derive(Debug, Default)]
+pub struct Runner {
+    entries: Vec<Entry>,
+}
 
 impl Runner {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_entry(&mut self, entry: Entry) {
+        self.entries.push(entry);
+    }
+
     pub fn run(&mut self) -> BatchResult<BatchRunResult> {
         let config = Config::from_env()?;
         self.run_with_config(config)
@@ -29,8 +41,7 @@ impl Runner {
         print!("\n\n");
 
         if entries.is_empty() {
-//            message::no_tests_enabled();
-            Ok(BatchRunResult::NoEntries)
+            Ok(BatchRunResult::NoEntries(Some(message::no_entries()?)))
         } else {
             Ok(BatchRunResult::ResultsMap(
                 entries

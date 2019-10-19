@@ -1,4 +1,4 @@
-use crate::batch_result::{BatchError, BatchResult};
+use crate::result::{error::BatchError, BatchResult, error::ConfigError};
 use std::env;
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -23,7 +23,7 @@ impl Update {
         match var.as_os_str().to_str() {
             Some("wip") => Ok(Update::Wip),
             Some("overwrite") => Ok(Update::Overwrite),
-            _ => Err(BatchError::UpdateVar(var)),
+            _ => Err(BatchError::ConfigError(ConfigError::UpdateEnvVar(var))),
         }
     }
 }

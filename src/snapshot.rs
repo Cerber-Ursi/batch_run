@@ -1,5 +1,5 @@
 use crate::{
-    batch_result::{EntryError, EntryFailed, EntryResult, NoExpected},
+    result::{error::{EntryError, EntryFailed}, EntryResult, error::NoExpected},
     config::Update,
     mismatch::{CompileFailMismatch, LocalOutput, RunMismatch},
     normalize::diagnostics,
