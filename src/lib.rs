@@ -122,7 +122,7 @@ enum Expected {
 }
 
 impl Expected {
-    pub fn is_run_pass(&self) -> bool {
+    pub fn is_run_pass(self) -> bool {
         use Expected::*;
         match self {
             RunMatch => true,

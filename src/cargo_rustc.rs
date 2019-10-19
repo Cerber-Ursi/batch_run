@@ -12,7 +12,7 @@ use crate::rustflags;
 
 lazy_static! {
     static ref TARGET_BIN: PathBuf = {
-        let tmp: PathBuf = [".", "target", "batch", ""].into_iter().collect();
+        let tmp: PathBuf = [".", "target", "batch", ""].iter().collect();
         tmp.with_extension(EXE_EXTENSION)
     };
 }

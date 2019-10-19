@@ -1,4 +1,5 @@
 use crate::mismatch::{CompileFailMismatch, RunMismatch};
+use crate::term;
 use glob::{GlobError, PatternError};
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -27,7 +28,7 @@ impl BatchRunResult {
     }
     pub fn all_ok(&self) -> bool {
         match self.errors() {
-            Some(errors) => errors.len() == 0,
+            Some(errors) => errors.is_empty(),
             None => true, // TODO configure?
         }
     }
@@ -36,7 +37,7 @@ impl BatchRunResult {
             Some(errors) => errors,
             None => return,
         };
-        if errors.len() > 0 {
+        if !errors.is_empty() {
             for (file, err) in errors.into_iter() {
                 eprintln!("{} => {}", file, err);
             }
@@ -92,7 +93,6 @@ pub enum EntryError {
     Io(#[source] io::Error),
     #[error("Unable to open provided path: {}, error: {}", .0.display(), .1)]
     Open(PathBuf, #[source] io::Error),
-    // TODO - is it used/necessary?
     #[error("Incorrect glob pattern: {0}")]
     Pattern(#[source] PatternError),
     #[error("Error reading snapshot: {0}")]
@@ -105,15 +105,21 @@ pub enum EntryError {
 
 pub type EntryResult<T = ()> = std::result::Result<T, EntryFailed>;
 pub struct EntryOutput {
-    pub res: EntryResult,
-    pub buf: Buffer,
+    res: EntryResult,
+    buf: Option<Buffer>,
 }
 impl EntryOutput {
-    fn is_ok(&self) -> bool {
+    pub(crate) fn new(res: EntryResult, buf: Buffer) -> Self {
+        Self { res, buf: Some(buf) }
+    }
+    pub fn is_ok(&self) -> bool {
         self.res.is_ok()
     }
-    fn err(&self) -> Option<&EntryFailed> {
+    pub fn err(&self) -> Option<&EntryFailed> {
         self.res.as_ref().err()
+    }
+    pub fn write_buf(&mut self) -> io::Result<()> {
+        term::print(self.buf.take().expect("Can't call `write_buf` twice of the same output"))
     }
 }
 

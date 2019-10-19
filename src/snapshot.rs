@@ -18,7 +18,7 @@ use std::{
 pub fn check_compile_fail(path: &Path, output: Output, update_mode: Update) -> EntryResult<()> {
     // early exit if the entry has indeed compiled
     if output.status.success() {
-        Err(EntryFailed::ShouldNotCompile)?;
+        return Err(EntryFailed::ShouldNotCompile);
     }
 
     let variations = diagnostics(&output.stderr);
@@ -105,7 +105,7 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> Entr
     match update_mode {
         Update::Wip => {
             // message::mismatch(&expected, preferred);
-            Err(EntryFailed::RunMismatch(RunMismatch::new(expected, output)))?;
+            return Err(EntryFailed::RunMismatch(RunMismatch::new(expected, output)));
         }
         Update::Overwrite => {
             // note that we can't move this out of the block, due to the types mismatch
@@ -140,5 +140,5 @@ fn write_overwrite(path: &Path, content: &str) -> EntryResult<Infallible> {
     write(path, content).map_err(EntryError::WriteExpected)?;
     Err(EntryFailed::ExpectedNotExist(NoExpected::Direct(
         content.to_owned(),
-    )))?
+    )))
 }
