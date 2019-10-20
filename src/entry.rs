@@ -3,11 +3,14 @@ use termcolor::Buffer;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use crate::result::{error::{EntryError, EntryFailed}, EntryOutput, EntryResult};
 use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::Config;
-use crate::message;
+use crate::logging;
+use crate::result::{
+    error::{EntryError, EntryFailed},
+    EntryOutput, EntryResult,
+};
 use crate::snapshot::{check_compile_fail, check_run_match};
 use crate::term;
 
@@ -41,8 +44,8 @@ impl Entry {
         }
     }
 
-    fn run(&self, builder: &BinaryBuilder, cfg: &Config, output: &mut Buffer) -> EntryResult<()> {
-        message::begin_entry(self, output, true)?; // TODO
+    fn run(&self, builder: &BinaryBuilder, cfg: &Config, log: &mut Buffer) -> EntryResult<()> {
+        logging::log_entry_start(self, log)?;
         self.try_open()?;
 
         let mut output =
@@ -52,6 +55,7 @@ impl Entry {
             Expected::RunMatch => {
                 // early exit if the entry has not compiled
                 if !output.status.success() {
+                    logging::unexpected_build_error(log, &output.stderr)?;
                     return Err(EntryFailed::ShouldCompile(
                         String::from_utf8_lossy(&output.stderr).to_string(),
                     ));
@@ -61,18 +65,19 @@ impl Entry {
             }
             Expected::CompileFail => check_compile_fail,
         };
-        check(&self.path, output, cfg.update_mode())
+        check(&self.path, output, cfg.update_mode(), log)
+            .and_then(|_| logging::ok(log).map_err(Into::into))
     }
 
-fn try_open(&self) -> EntryResult<()> {
-    if self.path.exists() {
-        return Ok(());
+    fn try_open(&self) -> EntryResult<()> {
+        if self.path.exists() {
+            return Ok(());
+        }
+        match File::open(&self.path) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(EntryError::Open(self.path.clone(), err).into()),
+        }
     }
-    match File::open(&self.path) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(EntryError::Open(self.path.clone(), err).into()),
-    }
-}
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -82,7 +87,7 @@ fn try_open(&self) -> EntryResult<()> {
 }
 
 pub struct ExpandedEntry {
-    messages: Buffer,
+    log: Buffer,
     raw_entry: Entry,
     error: Option<EntryFailed>,
 }
@@ -102,7 +107,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
         let mut expanded = ExpandedEntry {
             raw_entry: test.clone(),
             error: None,
-            messages: term::buf(),
+            log: term::buf(),
         };
         if let Some(utf8) = test.path.to_str() {
             if utf8.contains('*') {
@@ -115,7 +120,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
                                     expected: expanded.raw_entry.expected,
                                 },
                                 error: None,
-                                messages: term::buf(),
+                                log: term::buf(),
                             });
                         }
                         continue;
@@ -135,16 +140,17 @@ impl ExpandedEntry {
         let Self {
             error,
             raw_entry,
-            mut messages,
+            mut log,
         } = self;
         let res = match error {
-            None => raw_entry.run(builder, cfg, &mut messages),
+            None => raw_entry.run(builder, cfg, &mut log),
             Some(error) => {
-                //    message::begin_entry(&self.raw_entry, false);
+                // explicitly silence the io::Error - we have another error to show up
+                let _ = logging::log_entry_fail_to_start(&raw_entry, &mut log);
                 Err(error)
             }
         };
-        EntryOutput::new(res, messages)
+        EntryOutput::new(res, log)
     }
 
     pub fn path(&self) -> &Path {

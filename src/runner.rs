@@ -2,7 +2,7 @@ use crate::result::{BatchResult, BatchRunResult};
 use crate::binary::PreBinary;
 use crate::config::Config;
 use crate::entry::{Entry, expand_globs};
-use crate::message;
+use crate::logging;
 
 #[derive(Debug, Default)]
 pub struct Runner {
@@ -41,7 +41,7 @@ impl Runner {
         print!("\n\n");
 
         if entries.is_empty() {
-            Ok(BatchRunResult::NoEntries(Some(message::no_entries()?)))
+            Ok(BatchRunResult::NoEntries(Some(logging::no_entries()?)))
         } else {
             Ok(BatchRunResult::ResultsMap(
                 entries

@@ -84,7 +84,7 @@ mod binary;
 mod cargo_rustc;
 mod config;
 mod entry;
-mod message;
+mod logging;
 mod mismatch;
 mod normalize;
 mod runner;
