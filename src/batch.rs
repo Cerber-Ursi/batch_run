@@ -31,7 +31,8 @@ impl Batch {
             .add_entry(Entry::new(path, Expected::CompileFail));
     }
 
-    pub fn run(self) -> BatchResult {
+    pub fn run(mut self) -> BatchResult {
+        self.has_run = true;
         self.runner.borrow_mut().run()
     }
 }

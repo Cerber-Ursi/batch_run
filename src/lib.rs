@@ -82,7 +82,6 @@
 mod batch;
 mod binary;
 mod cargo_rustc;
-mod config;
 mod entry;
 mod logging;
 mod mismatch;
@@ -92,5 +91,6 @@ mod rustflags;
 mod snapshot;
 mod term;
 
+pub mod config;
 pub mod result;
 pub use crate::batch::Batch;
