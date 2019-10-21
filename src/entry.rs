@@ -1,18 +1,17 @@
-use termcolor::Buffer;
+use termcolor::WriteColor;
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
-use crate::config::Config;
+use crate::config::{Config, WriterBuilder};
 use crate::logging;
 use crate::result::{
     error::{EntryError, EntryFailed},
     EntryOutput, EntryResult,
 };
 use crate::snapshot::{check_compile_fail, check_run_match};
-use crate::term;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Expected {
@@ -44,7 +43,7 @@ impl Entry {
         }
     }
 
-    fn run(&self, builder: &BinaryBuilder, cfg: &Config, log: &mut Buffer) -> EntryResult<()> {
+    fn run<W: WriteColor>(&self, builder: &BinaryBuilder, cfg: &Config<W>, log: &mut impl WriteColor) -> EntryResult<()> {
         logging::log_entry_start(self, log)?;
         self.try_open()?;
 
@@ -86,13 +85,13 @@ impl Entry {
     }
 }
 
-pub struct ExpandedEntry {
-    log: Buffer,
+pub struct ExpandedEntry<W: WriteColor> {
+    log: W,
     raw_entry: Entry,
     error: Option<EntryFailed>,
 }
 
-pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
+pub(crate) fn expand_globs<W: WriteColor>(entries: &[Entry], writer: &WriterBuilder<W>) -> Vec<ExpandedEntry<W>> {
     fn glob(pattern: &str) -> EntryResult<Vec<PathBuf>> {
         let mut paths = glob::glob(pattern)?
             .map(|entry| entry.map_err(EntryFailed::from))
@@ -103,13 +102,13 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 
     let mut vec = Vec::new();
 
-    for test in tests {
+    for entry in entries {
         let mut expanded = ExpandedEntry {
-            raw_entry: test.clone(),
+            raw_entry: entry.clone(),
             error: None,
-            log: term::buf(),
+            log: writer.build(),
         };
-        if let Some(utf8) = test.path.to_str() {
+        if let Some(utf8) = entry.path.to_str() {
             if utf8.contains('*') {
                 match glob(utf8) {
                     Ok(paths) => {
@@ -120,7 +119,7 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
                                     expected: expanded.raw_entry.expected,
                                 },
                                 error: None,
-                                log: term::buf(),
+                                log: writer.build(),
                             });
                         }
                         continue;
@@ -135,8 +134,8 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
     vec
 }
 
-impl ExpandedEntry {
-    pub fn run(self, builder: &BinaryBuilder, cfg: &Config) -> EntryOutput {
+impl<W: WriteColor> ExpandedEntry<W> {
+    pub fn run(self, builder: &BinaryBuilder, cfg: &Config<W>) -> EntryOutput<W> {
         let Self {
             error,
             raw_entry,

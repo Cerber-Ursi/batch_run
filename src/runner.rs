@@ -4,6 +4,8 @@ use crate::config::Config;
 use crate::entry::{Entry, expand_globs};
 use crate::logging;
 
+use termcolor::{WriteColor, StandardStream};
+
 #[derive(Debug, Default)]
 pub struct Runner {
     entries: Vec<Entry>,
@@ -18,11 +20,11 @@ impl Runner {
         self.entries.push(entry);
     }
 
-    pub fn run(&mut self) -> BatchResult<BatchRunResult> {
+    pub fn run(&mut self) -> BatchResult<BatchRunResult<StandardStream>> {
         let config = Config::from_env()?;
         self.run_with_config(config)
     }
-    pub fn run_with_config(&mut self, cfg: Config) -> BatchResult<BatchRunResult> {
+    pub fn run_with_config<W: WriteColor>(&mut self, cfg: Config<W>) -> BatchResult<BatchRunResult<W>> {
         let cwd = std::env::current_dir()?;
         std::env::set_current_dir(
             std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"),
@@ -31,17 +33,19 @@ impl Runner {
         std::env::set_current_dir(cwd)?;
         res
     }
-    fn run_impl(&mut self, cfg: Config) -> BatchResult<BatchRunResult> {
+    fn run_impl<W: WriteColor>(&mut self, cfg: Config<W>) -> BatchResult<BatchRunResult<W>> {
         let binary = PreBinary::new()?;
 
-        let entries = expand_globs(&self.entries);
+        let entries = expand_globs(&self.entries, &cfg.writer());
 
         let builder = binary.into_builder()?;
 
         print!("\n\n");
 
         if entries.is_empty() {
-            Ok(BatchRunResult::NoEntries(Some(logging::no_entries()?)))
+            let mut log = &cfg.writer().build();
+            logging::no_entries(&mut *log)?;
+            Ok(BatchRunResult::NoEntries(Some(*log)))
         } else {
             Ok(BatchRunResult::ResultsMap(
                 entries
