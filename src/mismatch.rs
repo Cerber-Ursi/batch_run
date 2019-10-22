@@ -11,8 +11,8 @@ pub struct LocalOutput {
 impl LocalOutput {
     // This is an *extremely* hacky thing.
     // In fact, I'm ignoring every backslash in the output by replacing them with forward slashes,
-    // so that the pathes, if the program writes them (either correctly or during panic) are
-    // compared indepentently of the platform separator.
+    // so that the paths, if the program writes them (either correctly or during panic) are
+    // compared independently of the platform separator.
     // I'm not really sure if this is a way to go, but...
     pub fn matches(&self, other: &LocalOutput) -> bool {
         self.status == other.status
@@ -48,7 +48,8 @@ fn match_lines_with_backslashes(left: &[String], right: &[String]) -> bool {
         }
     })
 }
-fn match_with_backslashes(left: &str, right: &str) -> bool {
+// Public, to be used in compile-fail output matching.
+pub fn match_with_backslashes(left: &str, right: &str) -> bool {
     left.replace('\\', "/") == right.replace('\\', "/")
 }
 
