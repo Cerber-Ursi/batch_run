@@ -63,8 +63,16 @@ fn process(original: &str) -> String {
 }
 
 fn filter_map(line: &str) -> Option<String> {
+    lazy_static::lazy_static! {
+        static ref CUT_OUT: Vec<&'static str> = vec![
+            "error: aborting due to",
+            "For more information about this error, try `rustc --explain",
+            "For more information about an error, try `rustc --explain",
+            "Some errors have detailed explanations:",
+        ];
+    };
     // stripping out final compilation line
-    if line.starts_with("error: aborting due to ") {
+    if CUT_OUT.iter().any(|prefix| line.trim().starts_with(prefix)) {
         None
     } else {
         Some(line.to_owned())

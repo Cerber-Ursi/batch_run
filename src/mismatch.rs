@@ -1,3 +1,4 @@
+use itertools::{EitherOrBoth, Itertools};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, error::Error, process::Output};
 
@@ -6,6 +7,18 @@ pub struct LocalOutput {
     status: i32,
     stdout: Vec<String>,
     stderr: Vec<String>,
+}
+impl LocalOutput {
+    // This is an *extremely* hacky thing.
+    // In fact, I'm ignoring every backslash in the output by replacing them with forward slashes,
+    // so that the pathes, if the program writes them (either correctly or during panic) are
+    // compared indepentently of the platform separator.
+    // I'm not really sure if this is a way to go, but...
+    pub fn matches(&self, other: &LocalOutput) -> bool {
+        self.status == other.status
+            && match_lines_with_backslashes(&self.stdout, &other.stdout)
+            && match_lines_with_backslashes(&self.stderr, &other.stderr)
+    }
 }
 impl TryFrom<Output> for LocalOutput {
     // TODO make some real error and propagate it
@@ -25,6 +38,18 @@ fn bytes_to_lines(input: &[u8]) -> Vec<String> {
         .lines()
         .map(String::from)
         .collect()
+}
+fn match_lines_with_backslashes(left: &[String], right: &[String]) -> bool {
+    left.iter().zip_longest(right).all(|pair| {
+        if let EitherOrBoth::Both(left, right) = pair {
+            match_with_backslashes(left, right)
+        } else {
+            false
+        }
+    })
+}
+fn match_with_backslashes(left: &str, right: &str) -> bool {
+    left.replace('\\', "/") == right.replace('\\', "/")
 }
 
 #[derive(Debug)]

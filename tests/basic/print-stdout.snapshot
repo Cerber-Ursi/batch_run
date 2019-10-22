@@ -2,6 +2,7 @@
     status: 0,
     stdout: [
         "Chars([\'S\', \'T\', \'D\', \'O\', \'U\', \'T\'])",
+        "Testing at path \\basic\\print-stdout",
     ],
     stderr: [],
 )

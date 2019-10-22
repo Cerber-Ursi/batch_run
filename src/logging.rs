@@ -1,6 +1,6 @@
 use termcolor::{
     Color::{self, *},
-    WriteColor
+    WriteColor,
 };
 use termcolor_output::colored;
 
@@ -75,7 +75,11 @@ pub(crate) fn log_wip_write(
     snippet(buf, Yellow, string)
 }
 
-pub(crate) fn log_overwrite(buf: &mut impl WriteColor, path: &Path, string: &str) -> io::Result<()> {
+pub(crate) fn log_overwrite(
+    buf: &mut impl WriteColor,
+    path: &Path,
+    string: &str,
+) -> io::Result<()> {
     let path = path.to_string_lossy();
 
     colored!(
@@ -90,19 +94,36 @@ pub(crate) fn log_overwrite(buf: &mut impl WriteColor, path: &Path, string: &str
 }
 
 pub(crate) fn mismatch(log: &mut impl WriteColor, expected: &str, actual: &str) -> io::Result<()> {
-    colored!(log, "{}{}mismatch{}\n\n", bold!(true), fg!(Some(Red)), reset!())?;
+    colored!(
+        log,
+        "{}{}mismatch{}\n\n",
+        bold!(true),
+        fg!(Some(Red)),
+        reset!()
+    )?;
     log_snapshot(log, Blue, "EXPECTED", expected.as_bytes())?;
     log_snapshot(log, Red, "ACTUAL", actual.as_bytes())?;
     Ok(())
 }
 
 pub(crate) fn build_status_mismatch(log: &mut impl WriteColor) -> io::Result<()> {
-    colored!(log, "{}{}{}error: {}", reset!(), bold!(true), fg!(Some(Red)), bold!(false))
+    colored!(
+        log,
+        "{}{}{}error: {}",
+        reset!(),
+        bold!(true),
+        fg!(Some(Red)),
+        bold!(false)
+    )
 }
 
 pub(crate) fn unexpected_build_success(log: &mut impl WriteColor) -> io::Result<()> {
     build_status_mismatch(log)?;
-    colored!(log, "Expected test case to fail to compile, but it succeeded.{}\n", reset!())
+    colored!(
+        log,
+        "Expected test case to fail to compile, but it succeeded.{}\n",
+        reset!()
+    )
 }
 
 pub(crate) fn unexpected_build_error(log: &mut impl WriteColor, error: &[u8]) -> io::Result<()> {
@@ -111,7 +132,12 @@ pub(crate) fn unexpected_build_error(log: &mut impl WriteColor, error: &[u8]) ->
     snippet(log, Red, &normalize::trim(error))
 }
 
-pub(crate) fn log_snapshot(log: &mut impl WriteColor, color: Color, header: &str, snapshot: &[u8]) -> io::Result<()> {
+pub(crate) fn log_snapshot(
+    log: &mut impl WriteColor,
+    color: Color,
+    header: &str,
+    snapshot: &[u8],
+) -> io::Result<()> {
     if !snapshot.is_empty() {
         colored!(log, "{}{}{}:", bold!(true), fg!(Some(color)), header)?;
         snippet(log, color, &normalize::trim(snapshot))?;

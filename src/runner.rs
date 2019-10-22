@@ -1,10 +1,10 @@
-use crate::result::{BatchResult, BatchRunResult};
 use crate::binary::PreBinary;
 use crate::config::Config;
-use crate::entry::{Entry, expand_globs};
+use crate::entry::{expand_globs, Entry};
 use crate::logging;
+use crate::result::{BatchResult, BatchRunResult};
 
-use termcolor::{WriteColor, StandardStream};
+use termcolor::{StandardStream, WriteColor};
 
 #[derive(Debug, Default)]
 pub struct Runner {
@@ -24,7 +24,10 @@ impl Runner {
         let config = Config::from_env()?;
         self.run_with_config(config)
     }
-    pub fn run_with_config<W: WriteColor>(&mut self, cfg: Config<W>) -> BatchResult<BatchRunResult<W>> {
+    pub fn run_with_config<W: WriteColor>(
+        &mut self,
+        cfg: Config<W>,
+    ) -> BatchResult<BatchRunResult<W>> {
         let cwd = std::env::current_dir()?;
         std::env::set_current_dir(
             std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"),

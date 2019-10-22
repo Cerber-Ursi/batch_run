@@ -1,6 +1,5 @@
 use crate::term;
 use glob::{GlobError, PatternError};
-use std::collections::HashMap;
 use std::io;
 use termcolor::{Buffer, StandardStream, WriteColor};
 
@@ -9,7 +8,7 @@ use error::*;
 
 pub enum BatchRunResult<W: WriteColor = StandardStream> {
     NoEntries(Option<W>),
-    ResultsMap(HashMap<String, EntryOutput<W>>),
+    ResultsMap(Vec<(String, EntryOutput<W>)>),
 }
 pub type BatchResult<T = BatchRunResult> = std::result::Result<T, BatchError>;
 
@@ -48,7 +47,11 @@ impl BatchRunResult<Buffer> {
     pub fn print_all(&mut self) -> std::result::Result<(), PrintError> {
         match self {
             BatchRunResult::NoEntries(buf) => term::print(buf.take()),
-            BatchRunResult::ResultsMap(map) => map.values_mut().map(EntryOutput::print).collect(),
+            BatchRunResult::ResultsMap(map) => map
+                .iter_mut()
+                .map(|(_, out)| out)
+                .map(EntryOutput::print)
+                .collect(),
         }
     }
 }

@@ -7,6 +7,7 @@ use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::{Config, WriterBuilder};
 use crate::logging;
+use crate::normalize::diagnostics;
 use crate::result::{
     error::{EntryError, EntryFailed},
     EntryOutput, EntryResult,
@@ -43,7 +44,12 @@ impl Entry {
         }
     }
 
-    fn run<W: WriteColor>(&self, builder: &BinaryBuilder, cfg: &Config<W>, log: &mut impl WriteColor) -> EntryResult<()> {
+    fn run<W: WriteColor>(
+        &self,
+        builder: &BinaryBuilder,
+        cfg: &Config<W>,
+        log: &mut impl WriteColor,
+    ) -> EntryResult<()> {
         logging::log_entry_start(self, log)?;
         self.try_open()?;
 
@@ -54,10 +60,9 @@ impl Entry {
             Expected::RunMatch => {
                 // early exit if the entry has not compiled
                 if !output.status.success() {
-                    logging::unexpected_build_error(log, &output.stderr)?;
-                    return Err(EntryFailed::ShouldCompile(
-                        String::from_utf8_lossy(&output.stderr).to_string(),
-                    ));
+                    let stderr = diagnostics(&output.stderr).preferred().to_owned();
+                    logging::unexpected_build_error(log, stderr.as_bytes())?;
+                    return Err(EntryFailed::ShouldCompile(stderr));
                 }
                 output = cargo_rustc::run_entry()?;
                 check_run_match
@@ -91,7 +96,10 @@ pub struct ExpandedEntry<W: WriteColor> {
     error: Option<EntryFailed>,
 }
 
-pub(crate) fn expand_globs<W: WriteColor>(entries: &[Entry], writer: &WriterBuilder<W>) -> Vec<ExpandedEntry<W>> {
+pub(crate) fn expand_globs<W: WriteColor>(
+    entries: &[Entry],
+    writer: &WriterBuilder<W>,
+) -> Vec<ExpandedEntry<W>> {
     fn glob(pattern: &str) -> EntryResult<Vec<PathBuf>> {
         let mut paths = glob::glob(pattern)?
             .map(|entry| entry.map_err(EntryFailed::from))
