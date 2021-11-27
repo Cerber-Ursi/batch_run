@@ -50,8 +50,7 @@ impl BatchRunResult<Buffer> {
             BatchRunResult::ResultsMap(map) => map
                 .iter_mut()
                 .map(|(_, out)| out)
-                .map(EntryOutput::print)
-                .collect(),
+                .try_for_each(EntryOutput::print),
         }
     }
 }

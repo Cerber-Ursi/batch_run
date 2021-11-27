@@ -51,12 +51,7 @@ impl Runner {
             Ok(BatchRunResult::ResultsMap(
                 entries
                     .into_iter()
-                    .map(|entry| {
-                        (
-                            entry.path().display().to_string(),
-                            entry.run(&builder, &cfg),
-                        )
-                    })
+                    .map(|entry| (entry.path().display().to_string(), entry.run(builder, &cfg)))
                     .collect(),
             ))
         }

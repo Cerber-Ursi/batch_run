@@ -1,7 +1,7 @@
 use crate::{
     config::Update,
     logging,
-    mismatch::{CompileFailMismatch, LocalOutput, RunMismatch, match_with_backslashes},
+    mismatch::{match_with_backslashes, CompileFailMismatch, LocalOutput, RunMismatch},
     normalize::diagnostics,
     result::{
         error::NoExpected,
@@ -58,13 +58,13 @@ pub fn check_compile_fail(
         .map_err(EntryError::ReadExpected)?
         .replace("\r\n", "\n");
 
-    if variations.any(|stderr| match_with_backslashes(&expected, &stderr)) {
+    if variations.any(|stderr| match_with_backslashes(&expected, stderr)) {
         return Ok(());
     }
 
     match update_mode {
         Update::Wip => {
-            logging::mismatch(log, &expected, &preferred)?;
+            logging::mismatch(log, &expected, preferred)?;
             Err(EntryFailed::CompileFailMismatch(CompileFailMismatch::new(
                 expected, preferred,
             )))
@@ -115,7 +115,7 @@ pub fn check_run_match(
     let data = to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed");
     match update_mode {
         Update::Wip => {
-            logging::mismatch(log, &string, &data)?;
+            logging::mismatch(log, string, &data)?;
             Err(EntryFailed::RunMismatch(RunMismatch::new(expected, output)))
         }
         Update::Overwrite => {
@@ -136,7 +136,7 @@ fn write_wip(path: &Path, content: &str, log: &mut impl WriteColor) -> EntryResu
         .file_name()
         .expect("Failed to write expected content to WIP folder - corrupt path");
     let wip_path = wip_dir.join(stderr_name);
-    logging::log_wip_write(log, &wip_path, &path, content)?;
+    logging::log_wip_write(log, &wip_path, path, content)?;
 
     write(wip_path, content).map_err(EntryError::WriteExpected)?;
 
@@ -150,7 +150,7 @@ fn write_overwrite(
     content: &str,
     log: &mut impl WriteColor,
 ) -> EntryResult<Infallible> {
-    logging::log_overwrite(log, &path, content)?;
+    logging::log_overwrite(log, path, content)?;
 
     write(path, content).map_err(EntryError::WriteExpected)?;
 

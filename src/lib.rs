@@ -24,14 +24,12 @@
 //! A minimal batch_run setup looks like this:
 //!
 //! ```rust
-//! fn main() {
-//!     let b = batch_run::Batch::new();
-//!     b.compile_fail("batches/ui/*.rs");
-//!     match b.run() {
-//!         Ok(_) => {},
-//!         Err(err) => println!("{:?}", err)
-//!     };
-//! }
+//! let b = batch_run::Batch::new();
+//! b.compile_fail("batches/ui/*.rs");
+//! match b.run() {
+//!     Ok(_) => {},
+//!     Err(err) => println!("{:?}", err)
+//! };
 //! ```
 //!
 //! This program will individually compile each of the
@@ -56,14 +54,12 @@
 //! You can mix compile_fail and run_match cases in one batch:
 //!
 //! ```rust
-//! fn main() {
-//!     let t = batch_run::Batch::new();
-//!     t.run_match("batches/01-parse-header.rs");
-//!     t.run_match("batches/02-parse-body.rs");
-//!     t.compile_fail("batches/03-expand-four-errors.rs");
-//!     t.run_match("batches/04-paste-ident.rs");
-//!     t.run_match("batches/05-repeat-section.rs");
-//! }
+//! let t = batch_run::Batch::new();
+//! t.run_match("batches/01-parse-header.rs");
+//! t.run_match("batches/02-parse-body.rs");
+//! t.compile_fail("batches/03-expand-four-errors.rs");
+//! t.run_match("batches/04-paste-ident.rs");
+//! t.run_match("batches/05-repeat-section.rs");
 //! ```
 //!
 //! <br>
