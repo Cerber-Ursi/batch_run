@@ -1,4 +1,4 @@
-use crate::binary::PreBinary;
+use crate::binary::BUILDER;
 use crate::config::Config;
 use crate::entry::{expand_globs, Entry};
 use crate::logging;
@@ -37,11 +37,9 @@ impl Runner {
         res
     }
     fn run_impl<W: WriteColor>(&mut self, cfg: Config<W>) -> BatchResult<BatchRunResult<W>> {
-        let binary = PreBinary::new()?;
-
         let entries = expand_globs(&self.entries, &cfg.writer());
 
-        let builder = binary.into_builder()?;
+        let builder = &*BUILDER;
 
         print!("\n\n");
 

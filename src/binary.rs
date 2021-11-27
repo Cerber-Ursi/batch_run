@@ -19,15 +19,12 @@ lazy_static! {
     ]
     .iter()
     .collect();
+
+    pub static ref BUILDER: BinaryBuilder = BinaryBuilder::new().unwrap();
 }
 
-pub struct PreBinary {
-    name: String,
-    bin_created: bool,
-}
 
-impl PreBinary {
-    pub fn new() -> BatchResult<Self> {
+    fn new() -> BatchResult<(String, bool)> {
         let bin_needed = BIN_DIR.exists().not();
         let bin_created = bin_needed && create_dir(&*BIN_DIR).map(|_| true)?;
         let mut name = "batch_runner_check_".to_owned();
@@ -40,11 +37,11 @@ impl PreBinary {
             }
         }
         write(BIN_DIR.join(&name).with_extension("rs"), b"fn main() {}")?;
-        Ok(PreBinary { name, bin_created })
+        Ok((name, bin_created))
     }
 
-    pub fn into_builder(self) -> BatchResult<BinaryBuilder> {
-        let cmd = cargo_rustc::capture_build_command(&self.name)?;
+    fn into_builder(name: &str) -> BatchResult<BinaryBuilder> {
+        let cmd = cargo_rustc::capture_build_command(name)?;
 
         let args = cmd
             .split_ascii_whitespace()
@@ -69,17 +66,14 @@ impl PreBinary {
 
         Ok(BinaryBuilder { args })
     }
-}
-
-impl Drop for PreBinary {
-    fn drop(&mut self) {
-        remove_file(BIN_DIR.join(&self.name).with_extension("rs")).unwrap_or_else(|_| {
+    fn drop(name: &str, bin_created: bool) {
+        remove_file(BIN_DIR.join(name).with_extension("rs")).unwrap_or_else(|_| {
             eprintln!(
                 "Unable to remove temporary file {}, please check it and remove manually",
-                self.name
+                name
             )
         });
-        if self.bin_created {
+        if bin_created {
             remove_dir(&*BIN_DIR).unwrap_or_else(|_| {
                 eprintln!(
                     "Unable to remove directory {}, please check it and remove manually",
@@ -90,13 +84,19 @@ impl Drop for PreBinary {
             });
         }
     }
-}
+
 
 pub struct BinaryBuilder {
     args: Vec<String>,
 }
 
 impl BinaryBuilder {
+    pub fn new() -> BatchResult<Self> {
+        let (name, bin_created) = new()?;
+        let builder = into_builder(&name);
+        drop(&name, bin_created);
+        builder
+    }
     pub fn args_to_command(&self, cmd: &mut Command, main: &Path) {
         cmd.args(&self.args).arg(main);
     }
