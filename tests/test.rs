@@ -15,7 +15,7 @@ fn test() {
     t.run_pass("tests/ui/run-pass-7.rs");
     t.run_pass("tests/ui/run-pass-8.rs");
     t.compile_fail("tests/ui/compile-fail-1.rs");
-//    t.run_pass("tests/ui/run-fail.rs"); - run-fail?
+    //    t.run_pass("tests/ui/run-fail.rs"); - run-fail?
     t.run_pass("tests/ui/run-pass-9.rs");
     t.compile_fail("tests/ui/compile-fail-2.rs");
     t.run().unwrap();

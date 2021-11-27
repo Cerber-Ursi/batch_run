@@ -203,15 +203,12 @@
 #[macro_use]
 mod term;
 
-#[macro_use]
-mod path;
-
-mod cargo;
+mod binary;
+mod cargo_rustc;
 mod dependencies;
 mod env;
 mod error;
 mod features;
-mod manifest;
 mod message;
 mod normalize;
 mod run;
@@ -219,7 +216,7 @@ mod rustflags;
 
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
-use std::thread;
+// use std::thread;
 
 #[derive(Debug)]
 pub struct Batch {
@@ -228,54 +225,69 @@ pub struct Batch {
 
 #[derive(Debug)]
 struct Runner {
-    tests: Vec<Test>,
+    entries: Vec<Entry>,
 }
 
 #[derive(Clone, Debug)]
-struct Test {
+struct Entry {
     path: PathBuf,
     expected: Expected,
 }
 
 #[derive(Copy, Clone, Debug)]
 enum Expected {
-    Pass,
+    RunPass,
     CompileFail,
+}
+
+impl Expected {
+    pub fn is_run_pass(&self) -> bool {
+        use Expected::*;
+        match self {
+            RunPass => true,
+            CompileFail => false,
+        }
+    }
 }
 
 impl Batch {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Batch {
-            runner: RefCell::new(Runner { tests: Vec::new() }),
+            runner: RefCell::new(Runner {
+                entries: Vec::new(),
+            }),
         }
     }
 
     pub fn run_pass<P: AsRef<Path>>(&self, path: P) {
-        self.runner.borrow_mut().tests.push(Test {
+        self.runner.borrow_mut().entries.push(Entry {
             path: path.as_ref().to_owned(),
-            expected: Expected::Pass,
+            expected: Expected::RunPass,
         });
     }
 
     pub fn compile_fail<P: AsRef<Path>>(&self, path: P) {
-        self.runner.borrow_mut().tests.push(Test {
+        self.runner.borrow_mut().entries.push(Entry {
             path: path.as_ref().to_owned(),
             expected: Expected::CompileFail,
         });
     }
 
     // TODO error type
-    pub fn run(self) -> Result<(), String> {
+    pub fn run(self) -> Result<(), error::Error> {
         self.runner.borrow_mut().run()
     }
 }
 
-#[doc(hidden)]
-impl Drop for Batch {
-    fn drop(&mut self) {
-        if !thread::panicking() {
-            let _ = self.runner.borrow_mut().run();
-        }
-    }
-}
+// #[doc(hidden)]
+// impl Drop for Batch {
+//     fn drop(&mut self) {
+//         if !thread::panicking() {
+//             self.runner
+//                 .borrow_mut()
+//                 .run()
+//                 .unwrap_or_else(|err| println!("{}", err));
+//         }
+//     }
+// }
