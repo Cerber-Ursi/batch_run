@@ -60,7 +60,7 @@ impl PreBinary {
             .flatten()
             .map(String::from)
             .collect();
-            
+
         Ok(BinaryBuilder { args })
     }
 }

@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use std::{
-    env::consts::EXE_EXTENSION,
+    env::{consts::EXE_EXTENSION, var_os},
     path::{Path, PathBuf},
     process::{Command, Output},
 };
@@ -11,7 +11,7 @@ use crate::rustflags;
 
 lazy_static! {
     static ref TARGET_BIN: PathBuf = {
-        let tmp: PathBuf = ["target", "batch", ""].into_iter().collect();
+        let tmp: PathBuf = [".", "target", "batch", ""].into_iter().collect();
         tmp.with_extension(EXE_EXTENSION)
     };
 }
@@ -24,7 +24,7 @@ fn raw_cargo() -> Command {
 
 fn rustc() -> Command {
     let mut cmd = Command::new(info::rustc());
-    cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
+    cmd.current_dir(var_os("CARGO_MANIFEST_DIR").unwrap());
     cmd.args(&[
         "-o",
         TARGET_BIN.to_str().expect("Non-UTF-8 symbols in path"),
@@ -34,7 +34,7 @@ fn rustc() -> Command {
 
 pub fn capture_build_command(bin_name: &str) -> Result<String> {
     let mut cmd = raw_cargo();
-    cmd.current_dir(env!("CARGO_MANIFEST_DIR"));
+    cmd.current_dir(var_os("CARGO_MANIFEST_DIR").unwrap());
     rustflags::set_env(&mut cmd);
     cmd.arg("build");
     if info::opt_level() == "release" {
@@ -45,7 +45,7 @@ pub fn capture_build_command(bin_name: &str) -> Result<String> {
         .arg("--verbose")
         .output()
         .map_err(Error::Cargo)
-        // .map(|out| { println!("Cargo output: \"{}\"", String::from_utf8(out.stderr).unwrap()); "rustc".to_owned() })
+        // .map(|out| { println!("Cargo output: \"{}\"", String::from_utf8(out.clone().stderr).unwrap()); out })
         .map(extract_build_command)
         .map(trim_build_command)
 }
@@ -54,6 +54,7 @@ fn extract_build_command(out: Output) -> String {
     String::from_utf8(out.stderr)
         .expect("Cargo produced non-UTF-8 output")
         .lines()
+        // .inspect(|line| println!("Cargo output: {}", line))
         .filter(|line| line.trim_start().starts_with("Running `"))
         .last()
         .expect("No running command in cargo output")
