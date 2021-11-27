@@ -1,7 +1,7 @@
 [package]
 name = "batch_run"
 description = "Batch runner for arbitrary Rust files within current project"
-version = "1.0.0-alpha.3"
+version = "1.0.0-alpha.4"
 authors = ["Cerberuser <k.bagrov@g.nsu.ru>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
