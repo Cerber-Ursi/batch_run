@@ -1,9 +1,13 @@
 use crate::{
-    result::{error::{EntryError, EntryFailed}, EntryResult, error::NoExpected},
     config::Update,
     logging,
     mismatch::{CompileFailMismatch, LocalOutput, RunMismatch},
     normalize::diagnostics,
+    result::{
+        error::NoExpected,
+        error::{EntryError, EntryFailed},
+        EntryResult,
+    },
 };
 use ron::{
     de::from_str,
@@ -17,7 +21,12 @@ use std::{
 };
 use termcolor::WriteColor;
 
-pub fn check_compile_fail(path: &Path, output: Output, update_mode: Update, log: &mut impl WriteColor) -> EntryResult<()> {
+pub fn check_compile_fail(
+    path: &Path,
+    output: Output,
+    update_mode: Update,
+    log: &mut impl WriteColor,
+) -> EntryResult<()> {
     // early exit if the entry has indeed compiled
     if output.status.success() {
         logging::unexpected_build_success(log)?;
@@ -60,13 +69,16 @@ pub fn check_compile_fail(path: &Path, output: Output, update_mode: Update, log:
                 expected, preferred,
             )))
         }
-        Update::Overwrite => {
-            write_overwrite(&stderr_path, preferred, log).map(|_| ())
-        }
+        Update::Overwrite => write_overwrite(&stderr_path, preferred, log).map(|_| ()),
     }
 }
 
-pub fn check_run_match(path: &Path, output: Output, update_mode: Update, log: &mut impl WriteColor) -> EntryResult<()> {
+pub fn check_run_match(
+    path: &Path,
+    output: Output,
+    update_mode: Update,
+    log: &mut impl WriteColor,
+) -> EntryResult<()> {
     // TODO propagate error
     let output: LocalOutput = output.try_into().expect("No status code");
 
@@ -92,16 +104,15 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update, log: &m
 
     // ok, well - the file does exist, but does it contain the same that we've got?
     let string = &read_to_string(&snapshot_path)
-            .map_err(EntryError::ReadExpected)?
-            .replace("\r\n", "\n");
+        .map_err(EntryError::ReadExpected)?
+        .replace("\r\n", "\n");
     let expected = from_str(string).expect("Deserialization failed");
 
-    if expected == output {
+    if output.matches(&expected) {
         return Ok(());
     }
 
-        let data =
-            to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed");
+    let data = to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed");
     match update_mode {
         Update::Wip => {
             logging::mismatch(log, &string, &data)?;
@@ -109,11 +120,7 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update, log: &m
         }
         Update::Overwrite => {
             // TODO propagate the serialization-deserealization errors
-            write_overwrite(
-                &snapshot_path,
-                &data,
-                log,
-            ).map(|_| ())
+            write_overwrite(&snapshot_path, &data, log).map(|_| ())
         }
     }
 }
@@ -138,7 +145,11 @@ fn write_wip(path: &Path, content: &str, log: &mut impl WriteColor) -> EntryResu
     )))
 }
 
-fn write_overwrite(path: &Path, content: &str, log: &mut impl WriteColor) -> EntryResult<Infallible> {
+fn write_overwrite(
+    path: &Path,
+    content: &str,
+    log: &mut impl WriteColor,
+) -> EntryResult<Infallible> {
     logging::log_overwrite(log, &path, content)?;
 
     write(path, content).map_err(EntryError::WriteExpected)?;

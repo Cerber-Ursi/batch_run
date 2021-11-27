@@ -97,7 +97,10 @@ impl<W: WriteColor> Config<W> {
         }
     }
     pub fn with_buffer(self) -> Config<Buffer> {
-        Config { update_mode: self.update_mode, writer: WriterBuilder::buffer() }
+        Config {
+            update_mode: self.update_mode,
+            writer: WriterBuilder::buffer(),
+        }
     }
     pub fn writer(&self) -> WriterBuilder<W> {
         self.writer.clone()

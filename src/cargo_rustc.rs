@@ -12,7 +12,10 @@ use crate::rustflags;
 
 lazy_static! {
     static ref TARGET_BIN: PathBuf = {
-        let tmp: PathBuf = [".", "target", "batch", ""].iter().collect();
+        let mut tmp: PathBuf = [".", "target", "batch"].iter().collect();
+        // TODO configurable?
+        std::fs::create_dir_all(&tmp).expect("Unable to create batch executable in target directory; check your access rights");
+        tmp.push(&format!("{:x}", rand::random::<u64>()));
         tmp.with_extension(EXE_EXTENSION)
     };
 }

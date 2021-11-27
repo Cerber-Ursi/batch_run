@@ -7,7 +7,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum EntryFailed {
-    #[error("Entry should compile, but compilation failed; error message:\n{0}")]
+    #[error("Entry should compile, but compilation failed")]
     ShouldCompile(String),
     #[error("Entry should not compile, but it compiled successfully")]
     ShouldNotCompile,
