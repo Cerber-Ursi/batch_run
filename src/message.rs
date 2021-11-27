@@ -6,13 +6,13 @@ use termcolor::{
 };
 use termcolor_output::colored;
 
-use crate::{Entry, Expected};
-use crate::batch_result::EntryFailed;
+use crate::result::error::EntryFailed;
 use crate::normalize;
 use crate::term;
+use crate::entry::{Entry, Expected};
 
-use std::path::Path;
 use std::io;
+use std::path::Path;
 
 pub(crate) enum Level {
     Fail,
@@ -32,15 +32,16 @@ pub(crate) fn entry_failed(buf: &mut Buffer, err: EntryFailed) -> io::Result<()>
     )
 }
 
-// This function is called if there are no entries, so it will output directly to screen, without
-// receiving buffer from caller.
-pub(crate) fn no_entries() -> io::Result<()> {
-    let mut out = term::direct();
+// This function is called if there are no entries, so it will create the buffer itself,
+// not expecting it from caller.
+pub(crate) fn no_entries() -> io::Result<Buffer> {
+    let mut out = term::buf();
     colored!(
         out,
         "{}{}No entries were provided to runner. Maybe the files are not created yet, or the glob path is wrong.\n{}",
         reset!(), fg!(Some(Yellow)), reset!()
-    )
+    )?;
+    Ok(out)
 }
 
 pub(crate) fn ok(buf: &mut Buffer) -> io::Result<()> {
@@ -49,15 +50,17 @@ pub(crate) fn ok(buf: &mut Buffer) -> io::Result<()> {
 
 pub(crate) fn begin_entry(entry: &Entry, buf: &mut Buffer, show_expected: bool) -> io::Result<()> {
     let display_name = if show_expected {
-        entry.path
+        entry
+            .path()
             .file_name()
-            .unwrap_or_else(|| entry.path.as_os_str())
+            .unwrap_or_else(|| entry.path().as_os_str())
             .to_string_lossy()
     } else {
-        entry.path.as_os_str().to_string_lossy()
-    }.to_string();
+        entry.path().as_os_str().to_string_lossy()
+    }
+    .to_string();
     let expected = if show_expected {
-        match entry.expected {
+        match entry.expected() {
             Expected::RunMatch => " [should run and generate output]",
             Expected::CompileFail => " [should fail to compile]",
         }
@@ -65,10 +68,23 @@ pub(crate) fn begin_entry(entry: &Entry, buf: &mut Buffer, show_expected: bool) 
         ""
     };
 
-    colored!(buf, "{}batch entry {}{}{}{}", reset!(), bold!(true), display_name, bold!(false), expected)
+    colored!(
+        buf,
+        "{}batch entry {}{}{}{}",
+        reset!(),
+        bold!(true),
+        display_name,
+        bold!(false),
+        expected
+    )
 }
 
-pub(crate) fn write_stderr_wip(buf: &mut Buffer, wip_path: &Path, stderr_path: &Path, stderr: &str) -> io::Result<()> {
+pub(crate) fn write_stderr_wip(
+    buf: &mut Buffer,
+    wip_path: &Path,
+    stderr_path: &Path,
+    stderr: &str,
+) -> io::Result<()> {
     let wip_path = wip_path.to_string_lossy();
     let stderr_path = stderr_path.to_string_lossy();
 
@@ -85,11 +101,15 @@ pub(crate) fn write_stderr_wip(buf: &mut Buffer, wip_path: &Path, stderr_path: &
     colored!(buf, "\n")
 }
 
-pub(crate) fn overwrite_stderr(buf: &mut Buffer, stderr_path: &Path, stderr: &str) -> io::Result<()> {
+pub(crate) fn overwrite_stderr(
+    buf: &mut Buffer,
+    stderr_path: &Path,
+    stderr: &str,
+) -> io::Result<()> {
     let stderr_path = stderr_path.to_string_lossy();
 
     colored!(
-        buf, 
+        buf,
         "{}{}wip\n\nNOTE{}: writing the following output to {}.\n",
         reset!(),
         fg!(Some(Yellow)),
@@ -141,6 +161,12 @@ fn snippet(buf: &mut Buffer, color: Color, content: &str) -> io::Result<()> {
         colored!(buf, "{}{}\n", fg!(Some(color)), line)?;
     }
 
-    colored!(buf, "{}{}{}{}", reset!(), fg!(Some(color)), dotted_line, reset!())
+    colored!(
+        buf,
+        "{}{}{}{}",
+        reset!(),
+        fg!(Some(color)),
+        dotted_line,
+        reset!()
+    )
 }
-

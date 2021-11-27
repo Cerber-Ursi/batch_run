@@ -79,7 +79,7 @@
 //! (TODO)
 //!
 
-mod batch_result;
+mod batch;
 mod binary;
 mod cargo_rustc;
 mod config;
@@ -92,84 +92,5 @@ mod rustflags;
 mod snapshot;
 mod term;
 
-pub use crate::batch_result::*;
-
-use std::cell::RefCell;
-use std::path::{Path, PathBuf};
-use std::thread;
-
-#[derive(Debug)]
-pub struct Batch {
-    runner: RefCell<Runner>,
-    has_run: bool,
-}
-
-#[derive(Debug)]
-struct Runner {
-    entries: Vec<Entry>,
-}
-
-#[derive(Clone, Debug)]
-struct Entry {
-    path: PathBuf,
-    expected: Expected,
-}
-
-#[derive(Copy, Clone, Debug)]
-enum Expected {
-    RunMatch,
-    CompileFail,
-}
-
-impl Expected {
-    pub fn is_run_pass(self) -> bool {
-        use Expected::*;
-        match self {
-            RunMatch => true,
-            CompileFail => false,
-        }
-    }
-}
-
-impl Batch {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Batch {
-            runner: RefCell::new(Runner {
-                entries: Vec::new(),
-            }),
-            has_run: false,
-        }
-    }
-
-    pub fn run_match<P: AsRef<Path>>(&self, path: P) {
-        self.runner.borrow_mut().entries.push(Entry {
-            path: path.as_ref().to_owned(),
-            expected: Expected::RunMatch,
-        });
-    }
-
-    pub fn compile_fail<P: AsRef<Path>>(&self, path: P) {
-        self.runner.borrow_mut().entries.push(Entry {
-            path: path.as_ref().to_owned(),
-            expected: Expected::CompileFail,
-        });
-    }
-
-    pub fn run(self) -> BatchResult<BatchRunResult> {
-        self.runner.borrow_mut().run()
-    }
-}
-
-#[doc(hidden)]
-impl Drop for Batch {
-    fn drop(&mut self) {
-        if !thread::panicking() && !self.has_run {
-            self.runner
-                .borrow_mut()
-                .run()
-                .map(|_| ())
-                .unwrap_or_else(|err| println!("{}", err));
-        }
-    }
-}
+pub mod result;
+pub use crate::batch::Batch;
