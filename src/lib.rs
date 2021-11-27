@@ -92,6 +92,9 @@ mod normalize;
 mod run;
 mod rustflags;
 
+use crate::batch_result::BatchResult;
+use crate::batch_result::BatchRunResult;
+
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 // use std::thread;
@@ -155,7 +158,7 @@ impl Batch {
     }
 
     // TODO error type
-    pub fn run(self) -> Result<(), batch_result::EntryFailed> {
+    pub fn run(self) -> BatchResult<BatchRunResult> {
         self.runner.borrow_mut().run()
     }
 }

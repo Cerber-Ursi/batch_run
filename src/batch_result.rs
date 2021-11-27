@@ -1,13 +1,16 @@
 use crate::mismatch::Mismatch;
 use glob::{GlobError, PatternError};
 use std::collections::HashMap;
-use std::env;
 use std::ffi::OsString;
 use std::fmt::{self, Display};
 use std::io;
 use std::path::PathBuf;
 
-pub struct BatchResult(HashMap<String, Result<()>>);
+pub enum BatchRunResult {
+    NoEntries,
+    ResultsMap(HashMap<String, EntryResult<()>>),
+}
+pub type BatchResult<T> = std::result::Result<T, BatchError>;
 
 #[derive(Debug)]
 pub enum EntryFailed {
@@ -15,7 +18,7 @@ pub enum EntryFailed {
     ShouldNotCompile,
     ExpectedNotExist(NoExpected),
     Mismatch(Mismatch),
-    Error(Error),
+    Error(EntryError),
 }
 
 #[derive(Debug)]
@@ -25,8 +28,15 @@ pub enum NoExpected {
 }
 
 #[derive(Debug)]
-pub enum Error {
+pub enum BatchError {
     Cargo(io::Error),
+    Io(io::Error),
+    UpdateVar(OsString),
+}
+
+#[derive(Debug)]
+pub enum EntryError {
+    Rustc(io::Error),
     CargoFail,
     Glob(GlobError),
     Io(io::Error),
@@ -34,18 +44,17 @@ pub enum Error {
     Pattern(PatternError),
     ReadExpected(io::Error),
     RunFailed(io::Error),
-    UpdateVar(OsString),
     WriteExpected(io::Error),
 }
 
-pub type Result<T> = std::result::Result<T, EntryFailed>;
+pub type EntryResult<T> = std::result::Result<T, EntryFailed>;
 
-impl Display for Error {
+impl Display for EntryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
+        use self::EntryError::*;
 
         match self {
-            Cargo(e) => write!(f, "failed to execute cargo: {}", e),
+            Rustc(e) => write!(f, "failed to execute rustc: {}", e),
             CargoFail => write!(f, "cargo reported an error"),
             Glob(e) => write!(f, "{}", e),
             Io(e) => write!(f, "{}", e),
@@ -53,35 +62,52 @@ impl Display for Error {
             Pattern(e) => write!(f, "{}", e),
             ReadExpected(e) => write!(f, "failed to read stderr file: {}", e),
             RunFailed(_) => unimplemented!(),
-            UpdateVar(var) => write!(
-                f,
-                "unrecognized value of BATCH_RUN: {:?}",
-                var.to_string_lossy(),
-            ),
             WriteExpected(e) => write!(f, "failed to write stderr file: {}", e),
         }
     }
 }
 
-impl From<GlobError> for Error {
-    fn from(err: GlobError) -> Self {
-        Error::Glob(err)
+impl Display for BatchError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::BatchError::*;
+
+        match self {
+            Cargo(e) => write!(f, "failed to execute cargo: {}", e),
+            UpdateVar(var) => write!(
+                f,
+                "unrecognized value of BATCH_RUN: {:?}",
+                var.to_string_lossy(),
+            ),
+            Io(e) => write!(f, "{}", e),
+        }
     }
 }
 
-impl From<PatternError> for Error {
-    fn from(err: PatternError) -> Self {
-        Error::Pattern(err)
-    }
-}
-
-impl From<io::Error> for Error {
+impl From<io::Error> for BatchError {
     fn from(err: io::Error) -> Self {
-        Error::Io(err)
+        BatchError::Io(err)
     }
 }
 
-impl<T: Into<Error>> From<T> for EntryFailed {
+impl From<GlobError> for EntryError {
+    fn from(err: GlobError) -> Self {
+        EntryError::Glob(err)
+    }
+}
+
+impl From<PatternError> for EntryError {
+    fn from(err: PatternError) -> Self {
+        EntryError::Pattern(err)
+    }
+}
+
+impl From<io::Error> for EntryError {
+    fn from(err: io::Error) -> Self {
+        EntryError::Io(err)
+    }
+}
+
+impl<T: Into<EntryError>> From<T> for EntryFailed {
     fn from(input: T) -> Self {
         Self::Error(input.into())
     }

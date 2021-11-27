@@ -1,4 +1,4 @@
-use crate::batch_result::{Error, Result};
+use crate::batch_result::{BatchError, BatchResult};
 use std::env;
 
 #[derive(PartialEq, Debug)]
@@ -14,7 +14,7 @@ impl Default for Update {
 }
 
 impl Update {
-    fn env() -> Result<Self> {
+    fn env() -> BatchResult<Self> {
         let var = match env::var_os("BATCH_RUN") {
             Some(var) => var,
             None => return Ok(Update::default()),
@@ -23,19 +23,24 @@ impl Update {
         match var.as_os_str().to_str() {
             Some("wip") => Ok(Update::Wip),
             Some("overwrite") => Ok(Update::Overwrite),
-            _ => Err(Error::UpdateVar(var))?,
+            _ => Err(BatchError::UpdateVar(var))?,
         }
     }
 }
 
+#[derive(Default)]
 pub struct Config {
     update_mode: Update,
 }
 
 impl Config {
-    pub fn from_env() -> Result<Self> {
+    pub fn from_env() -> BatchResult<Self> {
         Ok(Self {
             update_mode: Update::env()?,
         })
+    }
+    #[allow(dead_code)]
+    pub fn with_update_mode(update_mode: Update) -> Self {
+        Self { update_mode }
     }
 }
