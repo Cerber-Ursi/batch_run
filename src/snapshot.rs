@@ -1,20 +1,16 @@
 use crate::{
     batch_result::{EntryError, EntryFailed, EntryResult, NoExpected},
     config::Update,
-    mismatch::{CompileFailMismatch, RunMismatch},
+    mismatch::{CompileFailMismatch, RunMismatch, LocalOutput},
     normalize::diagnostics,
 };
 use std::path::Path;
 use std::{
-    convert::Infallible,
-    fs::{create_dir_all, read_to_string, write, File},
-    io::{BufReader, BufWriter},
+    convert::{Infallible, TryInto},
+    fs::{create_dir_all, read_to_string, write},
     process::Output,
 };
-use xml::{
-    reader::{EventReader, XmlEvent as ReadEvent},
-    writer::{EventWriter, XmlEvent as WriteEvent},
-};
+use ron::{ser::{to_string_pretty, PrettyConfig}, de::from_str};
 
 pub fn check_compile_fail(path: &Path, output: Output, update_mode: Update) -> EntryResult<()> {
     // early exit if the entry has indeed compiled
@@ -71,31 +67,32 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> Entr
     if !output.status.success() {
         Err(EntryFailed::ShouldCompile)?;
     }
+    // TODO propagate error
+    let output: LocalOutput = output.try_into().expect("No status code");
 
-    // In this case, the expected output is an XML representing the output - let's read it!
+    // In this case, the expected output is the file representing the output - let's read it!
     let snapshot_path = path.with_extension("snapshot");
 
     // But first, check if it ever exists...
     if !snapshot_path.exists() {
         // message::fail_output(Warn, &build_stdout);
 
-        let xml = output.to_xml();
+        let data = to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed");
         // both write_wip and write_overwrite are "always-fallible", and this is statically guaranteed
         // so we know, that this branch will always return early
         // with stabilization of "never" type, we can guarantee this here, too
         // but for now, just trust us
         // (joking... you can always check the signatures)
         match update_mode {
-            Update::Wip => write_wip(&snapshot_path, &xml)?,
-            Update::Overwrite => write_overwrite(&snapshot_path, &xml)?,
+            Update::Wip => write_wip(&snapshot_path, &data)?,
+            Update::Overwrite => write_overwrite(&snapshot_path, &data)?,
         };
     }
 
     // ok, well - the file does exist, but does it contain the same that we've got?
-    let expected = read_to_string(&snapshot_path)
+    let expected = from_str(&read_to_string(&snapshot_path)
         .map_err(EntryError::ReadExpected)?
-        .replace("\r\n", "\n")
-        .to_output();
+        .replace("\r\n", "\n")).expect("Deserializing failed");
 
     if expected == output {
         // message::ok();
@@ -105,35 +102,15 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> Entr
     match update_mode {
         Update::Wip => {
             // message::mismatch(&expected, preferred);
-            Err(EntryFailed::RunMismatch(RunMismatch::new(
-                expected, output,
-            )))?;
+            Err(EntryFailed::RunMismatch(RunMismatch::new(expected, output)))?;
         }
         Update::Overwrite => {
             // note that we can't move this out of the block, due to the types mismatch
-            write_overwrite(&snapshot_path, &output.to_xml())?;
+            write_overwrite(&snapshot_path, &to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed"))?;
         }
     };
 
     Ok(())
-}
-
-// helper traits
-trait FromXml {
-    fn to_output(&self) -> Output;
-}
-trait ToXml {
-    fn to_xml(&self) -> String;
-}
-impl FromXml for String {
-    fn to_output(&self) -> Output {
-        unimplemented!();
-    }
-}
-impl ToXml for Output {
-    fn to_xml(&self) -> String {
-        unimplemented!();
-    }
 }
 
 fn write_wip(path: &Path, content: &str) -> EntryResult<Infallible> {
