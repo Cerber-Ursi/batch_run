@@ -4,11 +4,12 @@ use std::collections::HashMap;
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
+use termcolor::Buffer;
 use thiserror::Error;
 
 pub enum BatchRunResult {
     NoEntries,
-    ResultsMap(HashMap<String, EntryResult>),
+    ResultsMap(HashMap<String, EntryOutput>),
 }
 pub type BatchResult<T = BatchRunResult> = std::result::Result<T, BatchError>;
 
@@ -17,7 +18,7 @@ impl BatchRunResult {
         if let BatchRunResult::ResultsMap(map) = self {
             Some(
                 map.iter()
-                    .filter_map(|(file, res)| res.as_ref().err().map(|err| (file, err)))
+                    .filter_map(|(file, res)| res.err().as_ref().map(|err| (file, err)))
                     .collect(),
             )
         } else {
@@ -104,6 +105,18 @@ pub enum EntryError {
 }
 
 pub type EntryResult<T = ()> = std::result::Result<T, EntryFailed>;
+pub struct EntryOutput {
+    res: EntryResult,
+    buf: Buffer,
+}
+impl EntryOutput {
+    fn is_ok(&self) -> bool {
+        self.res.is_ok()
+    }
+    fn err(&self) -> &Option<EntryFailed> {
+        &self.res.err()
+    }
+}
 
 impl From<io::Error> for BatchError {
     fn from(err: io::Error) -> Self {

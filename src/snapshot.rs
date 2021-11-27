@@ -1,8 +1,12 @@
 use crate::{
     batch_result::{EntryError, EntryFailed, EntryResult, NoExpected},
     config::Update,
-    mismatch::{CompileFailMismatch, RunMismatch, LocalOutput},
+    mismatch::{CompileFailMismatch, LocalOutput, RunMismatch},
     normalize::diagnostics,
+};
+use ron::{
+    de::from_str,
+    ser::{to_string_pretty, PrettyConfig},
 };
 use std::path::Path;
 use std::{
@@ -10,7 +14,6 @@ use std::{
     fs::{create_dir_all, read_to_string, write},
     process::Output,
 };
-use ron::{ser::{to_string_pretty, PrettyConfig}, de::from_str};
 
 pub fn check_compile_fail(path: &Path, output: Output, update_mode: Update) -> EntryResult<()> {
     // early exit if the entry has indeed compiled
@@ -73,7 +76,8 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> Entr
     if !snapshot_path.exists() {
         // message::fail_output(Warn, &build_stdout);
 
-        let data = to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed");
+        let data =
+            to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed");
         // both write_wip and write_overwrite are "always-fallible", and this is statically guaranteed
         // so we know, that this branch will always return early
         // with stabilization of "never" type, we can guarantee this here, too
@@ -86,9 +90,12 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> Entr
     }
 
     // ok, well - the file does exist, but does it contain the same that we've got?
-    let expected = from_str(&read_to_string(&snapshot_path)
-        .map_err(EntryError::ReadExpected)?
-        .replace("\r\n", "\n")).expect("Deserializing failed");
+    let expected = from_str(
+        &read_to_string(&snapshot_path)
+            .map_err(EntryError::ReadExpected)?
+            .replace("\r\n", "\n"),
+    )
+    .expect("Deserialization failed");
 
     if expected == output {
         // message::ok();
@@ -102,7 +109,10 @@ pub fn check_run_match(path: &Path, output: Output, update_mode: Update) -> Entr
         }
         Update::Overwrite => {
             // note that we can't move this out of the block, due to the types mismatch
-            write_overwrite(&snapshot_path, &to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed"))?;
+            write_overwrite(
+                &snapshot_path,
+                &to_string_pretty(&output, PrettyConfig::default()).expect("Serialization failed"),
+            )?;
         }
     };
 
