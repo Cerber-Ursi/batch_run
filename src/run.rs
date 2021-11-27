@@ -12,6 +12,13 @@ use crate::normalize::{self, Variations};
 
 impl Runner {
     pub fn run(&mut self) -> Result<()> {
+        let cwd = std::env::current_dir()?;
+        std::env::set_current_dir(std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"))?;
+        let res = self.run_impl();
+        std::env::set_current_dir(cwd)?;
+        res
+    }
+    fn run_impl(&mut self) -> Result<()> {
         let binary = PreBinary::new()?;
 
         let entries = expand_globs(&self.entries);
