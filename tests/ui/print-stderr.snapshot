@@ -1,8 +1,6 @@
 (
     status: 0,
-    stdout: [
-        "Chars([\'S\', \'T\', \'D\', \'O\', \'U\', \'T\'])",
-    ],
+    stdout: [],
     stderr: [
         "Chars([\'S\', \'T\', \'D\', \'E\', \'R\', \'R\'])",
     ],
