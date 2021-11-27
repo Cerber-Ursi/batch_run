@@ -1,37 +1,27 @@
 use crate::mismatch::Mismatch;
 use glob::{GlobError, PatternError};
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fmt::{self, Display};
 use std::io;
 use std::path::PathBuf;
-use std::collections::HashMap;
 
-pub struct BatchResult(HashMap<String, EntryOutcome>);
+pub struct BatchResult(HashMap<String, Result<()>>);
 
 #[derive(Debug)]
-pub enum EntryOutcome {
-    Warning(Warning),
+pub enum EntryFailed {
+    ShouldCompile,
+    ShouldNotCompile,
+    ExpectedNotExist(NoExpected),
+    Mismatch(Mismatch),
     Error(Error),
 }
 
-impl From<Warning> for EntryOutcome {
-    fn from(warn: Warning) -> Self {
-        Self::Warning(warn)
-    }
-}
-
-impl<T> From<T> for EntryOutcome where Error: From<T> {
-    fn from(err: T) -> Self {
-        Self::Error(err.into())
-    }
-}
-
-// TODO: what are the contents?
 #[derive(Debug)]
-pub enum Warning {
-    Wip(String),
-    Overwritten(String),
+pub enum NoExpected {
+    ToWip(String),
+    Direct(String),
 }
 
 #[derive(Debug)]
@@ -40,19 +30,15 @@ pub enum Error {
     CargoFail,
     Glob(GlobError),
     Io(io::Error),
-    Mismatch(Mismatch),
     Open(PathBuf, io::Error),
     Pattern(PatternError),
-    PkgName(env::VarError),
-    ProjectDir,
-    ReadStderr(io::Error),
-    RunFailed(String),
-    ShouldNotHaveCompiled,
+    ReadExpected(io::Error),
+    RunFailed(io::Error),
     UpdateVar(OsString),
-    WriteStderr(io::Error),
+    WriteExpected(io::Error),
 }
 
-pub type Result<T> = std::result::Result<T, EntryOutcome>;
+pub type Result<T> = std::result::Result<T, EntryFailed>;
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -63,34 +49,16 @@ impl Display for Error {
             CargoFail => write!(f, "cargo reported an error"),
             Glob(e) => write!(f, "{}", e),
             Io(e) => write!(f, "{}", e),
-            Mismatch(_) => write!(f, "compiler error does not match expected error"), // TODO
             Open(path, e) => write!(f, "{}: {}", path.display(), e),
             Pattern(e) => write!(f, "{}", e),
-            PkgName(e) => write!(f, "failed to detect CARGO_PKG_NAME: {}", e),
-            ProjectDir => write!(f, "failed to determine name of project dir"),
-            ReadStderr(e) => write!(f, "failed to read stderr file: {}", e),
-            RunFailed(_) => write!(f, "execution of the test case was unsuccessful"), // TODO
-            ShouldNotHaveCompiled => {
-                write!(f, "expected test case to fail to compile, but it succeeded")
-            }
+            ReadExpected(e) => write!(f, "failed to read stderr file: {}", e),
+            RunFailed(_) => unimplemented!(),
             UpdateVar(var) => write!(
                 f,
-                "unrecognized value of TRYBUILD: {:?}",
+                "unrecognized value of BATCH_RUN: {:?}",
                 var.to_string_lossy(),
             ),
-            WriteStderr(e) => write!(f, "failed to write stderr file: {}", e),
-        }
-    }
-}
-
-impl Error {
-    // TODO - is this necessary?
-    pub fn already_printed(&self) -> bool {
-        use self::Error::*;
-
-        match self {
-            CargoFail | Mismatch(_) | RunFailed(_) | ShouldNotHaveCompiled => true,
-            _ => false,
+            WriteExpected(e) => write!(f, "failed to write stderr file: {}", e),
         }
     }
 }
@@ -110,5 +78,11 @@ impl From<PatternError> for Error {
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
         Error::Io(err)
+    }
+}
+
+impl<T: Into<Error>> From<T> for EntryFailed {
+    fn from(input: T) -> Self {
+        Self::Error(input.into())
     }
 }

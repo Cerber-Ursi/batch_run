@@ -5,8 +5,8 @@ use std::{
     process::{Command, Output},
 };
 
-use crate::binary::BinaryBuilder;
 use crate::batch_result::{Error, Result};
+use crate::binary::BinaryBuilder;
 use crate::rustflags;
 
 lazy_static! {
@@ -44,7 +44,8 @@ pub fn capture_build_command(bin_name: &str) -> Result<String> {
         .arg(bin_name)
         .arg("--verbose")
         .output()
-        .map_err(Error::Cargo).map_err(Into::into)
+        .map_err(Error::Cargo)
+        .map_err(Into::into)
         // .map(|out| { println!("Cargo output: \"{}\"", String::from_utf8(out.clone().stderr).unwrap()); out })
         .map(extract_build_command)
         .map(trim_build_command)
@@ -82,6 +83,6 @@ pub fn build_entry(builder: &BinaryBuilder, main: &Path, run: bool) -> Result<Ou
 pub fn run_entry() -> Result<Output> {
     Command::new(&*TARGET_BIN)
         .output()
-        // TODO - impl From?
-        .map_err(|error| Error::RunFailed(error.to_string())).map_err(Into::into)
+        .map_err(Error::RunFailed)
+        .map_err(Into::into)
 }

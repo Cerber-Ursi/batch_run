@@ -1,12 +1,12 @@
 //! Normalization primitives for rustc output.
-//! 
+//!
 //! Since we're using rustc directly (not cargo), it seems that there is little boilerplate
 //! in the compilation output, but it still appears to be.
 //! This module is designed to provide a way to remove the unnecessary lines,
 //! so they won't appear in either the *.stderr files or in the processing output.
 
 /// Possible normalizations of the rustc output, arranged from the least to the most preferable.
-/// 
+///
 /// For now, there's only one, but we should keep this as a way to generalize later.
 #[derive(PartialOrd, PartialEq, Copy, Clone)]
 enum Normalization {
@@ -15,7 +15,7 @@ enum Normalization {
 use self::Normalization::*;
 
 /// Helper struct for variations of normalized text.
-/// 
+///
 /// When the output is passed through different normalizations, we must have a way to check
 /// if some of them has provided the correct output (for backwards compatibility purposes).
 /// Of course, we can use `Vec<String>` directly, but this struct provides several helper
@@ -41,10 +41,7 @@ pub fn diagnostics(output: Vec<u8>) -> Variations {
     let mut from_bytes = String::from_utf8_lossy(&output).to_string();
     from_bytes = from_bytes.replace("\r\n", "\n");
 
-    let variations = [Basic]
-        .iter()
-        .map(|_| process(&from_bytes))
-        .collect();
+    let variations = [Basic].iter().map(|_| process(&from_bytes)).collect();
 
     Variations { variations }
 }
