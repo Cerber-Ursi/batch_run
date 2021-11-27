@@ -37,9 +37,10 @@ impl Variations {
 }
 
 /// Generate the `Variations` object from the raw stderr output.
-pub fn diagnostics(output: Vec<u8>) -> Variations {
-    let mut from_bytes = String::from_utf8_lossy(&output).to_string();
-    from_bytes = from_bytes.replace("\r\n", "\n");
+pub fn diagnostics(output: &[u8]) -> Variations {
+    let from_bytes = String::from_utf8_lossy(output)
+        .to_string()
+        .replace("\r\n", "\n");
 
     let variations = [Basic].iter().map(|_| process(&from_bytes)).collect();
 

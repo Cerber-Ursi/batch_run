@@ -1,7 +1,7 @@
 use crate::batch_result::{BatchError, BatchResult};
 use std::env;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Update {
     Wip,
     Overwrite,
@@ -42,5 +42,8 @@ impl Config {
     #[allow(dead_code)]
     pub fn with_update_mode(update_mode: Update) -> Self {
         Self { update_mode }
+    }
+    pub fn update_mode(&self) -> Update {
+        self.update_mode
     }
 }

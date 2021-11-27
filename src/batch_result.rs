@@ -1,4 +1,4 @@
-use crate::mismatch::Mismatch;
+use crate::mismatch::{CompileFailMismatch, RunMismatch};
 use glob::{GlobError, PatternError};
 use std::collections::HashMap;
 use std::ffi::OsString;
@@ -17,7 +17,8 @@ pub enum EntryFailed {
     ShouldCompile,
     ShouldNotCompile,
     ExpectedNotExist(NoExpected),
-    Mismatch(Mismatch),
+    CompileFailMismatch(CompileFailMismatch),
+    RunMismatch(RunMismatch),
     Error(EntryError),
 }
 

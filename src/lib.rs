@@ -28,7 +28,7 @@
 //!     let b = batch_run::Batch::new();
 //!     b.compile_fail("batches/ui/*.rs");
 //!     match b.run() {
-//!         Ok(()) => {},
+//!         Ok(_) => {},
 //!         Err(err) => println!("{:?}", err)
 //!     };
 //! }
@@ -48,21 +48,21 @@
 //!
 //! <br>
 //!
-//! ## Run-pass cases
+//! ## Run-match cases
 //!
-//! In the run_pass cases, we not only check that the code compiles, but also actually run it
+//! In the run_match cases, we not only check that the code compiles, but also actually run it
 //! and match the stdout/stderr output with the corresponding _*.stdout_/_*.stderr_ files.
 //!
-//! You can mix compile_fail and run_pass cases in one batch:
+//! You can mix compile_fail and run_match cases in one batch:
 //!
 //! ```rust
 //! fn main() {
 //!     let t = batch_run::Batch::new();
-//!     t.run_pass("batches/01-parse-header.rs");
-//!     t.run_pass("batches/02-parse-body.rs");
+//!     t.run_match("batches/01-parse-header.rs");
+//!     t.run_match("batches/02-parse-body.rs");
 //!     t.compile_fail("batches/03-expand-four-errors.rs");
-//!     t.run_pass("batches/04-paste-ident.rs");
-//!     t.run_pass("batches/05-repeat-section.rs");
+//!     t.run_match("batches/04-paste-ident.rs");
+//!     t.run_match("batches/05-repeat-section.rs");
 //! }
 //! ```
 //!
@@ -92,6 +92,7 @@ mod mismatch;
 mod normalize;
 mod runner;
 mod rustflags;
+mod snapshot;
 
 use crate::batch_result::BatchResult;
 use crate::batch_result::BatchRunResult;
@@ -118,8 +119,7 @@ struct Entry {
 
 #[derive(Copy, Clone, Debug)]
 enum Expected {
-    RunPass,
-    RunFail,
+    RunMatch,
     CompileFail,
 }
 
@@ -127,8 +127,7 @@ impl Expected {
     pub fn is_run_pass(&self) -> bool {
         use Expected::*;
         match self {
-            RunPass => true,
-            RunFail => true,
+            RunMatch => true,
             CompileFail => false,
         }
     }
@@ -144,10 +143,10 @@ impl Batch {
         }
     }
 
-    pub fn run_pass<P: AsRef<Path>>(&self, path: P) {
+    pub fn run_match<P: AsRef<Path>>(&self, path: P) {
         self.runner.borrow_mut().entries.push(Entry {
             path: path.as_ref().to_owned(),
-            expected: Expected::RunPass,
+            expected: Expected::RunMatch,
         });
     }
 

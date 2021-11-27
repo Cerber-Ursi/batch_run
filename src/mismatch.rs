@@ -1,7 +1,7 @@
 use std::process::Output;
 
 #[derive(Debug)]
-pub struct SingleMismatch<T = String> {
+struct SingleMismatch<T = String> {
     expected: T,
     actual: T,
 }
@@ -9,23 +9,19 @@ pub struct SingleMismatch<T = String> {
 #[derive(Debug)]
 pub struct CompileFailMismatch(SingleMismatch);
 #[derive(Debug)]
-pub struct RunPassMismatch(SingleMismatch<Output>);
-#[derive(Debug)]
-pub struct RunFailMismatch(SingleMismatch<Output>);
+pub struct RunMismatch(SingleMismatch<Output>);
 
-#[derive(Debug)]
-pub enum Mismatch {
-    CompileFail(CompileFailMismatch),
-    RunPass(RunPassMismatch),
-    RunFail(RunFailMismatch),
+impl RunMismatch {
+    pub fn new(expected: Output, actual: Output) -> Self {
+        RunMismatch(SingleMismatch { expected, actual })
+    }
 }
 
-impl SingleMismatch {
-    // FIXME
-    pub fn new() -> Self {
-        SingleMismatch {
-            expected: String::from(""),
-            actual: String::from(""),
-        }
+impl CompileFailMismatch {
+    pub fn new<S1: Into<String>, S2: Into<String>>(expected: S1, actual: S2) -> Self {
+        CompileFailMismatch(SingleMismatch {
+            expected: expected.into(),
+            actual: actual.into(),
+        })
     }
 }
