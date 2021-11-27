@@ -71,7 +71,7 @@ fn filter_map(line: &str) -> Option<String> {
             "Some errors have detailed explanations:",
         ];
     };
-    // stripping out final compilation line
+    // stripping out final compilation lines
     if CUT_OUT.iter().any(|prefix| line.trim().starts_with(prefix)) {
         None
     } else {

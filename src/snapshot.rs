@@ -1,7 +1,7 @@
 use crate::{
     config::Update,
     logging,
-    mismatch::{CompileFailMismatch, LocalOutput, RunMismatch},
+    mismatch::{CompileFailMismatch, LocalOutput, RunMismatch, match_with_backslashes},
     normalize::diagnostics,
     result::{
         error::NoExpected,
@@ -58,7 +58,7 @@ pub fn check_compile_fail(
         .map_err(EntryError::ReadExpected)?
         .replace("\r\n", "\n");
 
-    if variations.any(|stderr| expected == stderr) {
+    if variations.any(|stderr| match_with_backslashes(&expected, &stderr)) {
         return Ok(());
     }
 
@@ -119,7 +119,7 @@ pub fn check_run_match(
             Err(EntryFailed::RunMismatch(RunMismatch::new(expected, output)))
         }
         Update::Overwrite => {
-            // TODO propagate the serialization-deserealization errors
+            // TODO propagate the serialization-deserialization errors
             write_overwrite(&snapshot_path, &data, log).map(|_| ())
         }
     }
