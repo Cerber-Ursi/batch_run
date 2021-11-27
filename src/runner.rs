@@ -43,9 +43,9 @@ impl Runner {
         print!("\n\n");
 
         if entries.is_empty() {
-            let mut log = &cfg.writer().build();
-            logging::no_entries(&mut *log)?;
-            Ok(BatchRunResult::NoEntries(Some(*log)))
+            let mut log = cfg.writer().build();
+            logging::no_entries(&mut log)?;
+            Ok(BatchRunResult::NoEntries(Some(log)))
         } else {
             Ok(BatchRunResult::ResultsMap(
                 entries

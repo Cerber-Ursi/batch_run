@@ -29,11 +29,15 @@ impl Update {
     }
 }
 
-#[derive(Clone)]
-pub struct WriterBuilder<W: WriteColor>(Rc<dyn FnOnce() -> W>);
+pub struct WriterBuilder<W: WriteColor>(Rc<dyn Fn() -> W>);
+impl<W: WriteColor> Clone for WriterBuilder<W> {
+    fn clone(&self) -> Self {
+        Self(Rc::clone(&self.0))
+    }
+}
 
 impl<W: WriteColor> WriterBuilder<W> {
-    pub fn new(inner: Box<dyn FnOnce() -> W>) -> Self
+    pub fn new(inner: Box<dyn Fn() -> W>) -> Self
     where
         W: 'static,
     {
@@ -49,7 +53,7 @@ impl Default for WriterBuilder<StandardStream> {
     }
 }
 impl WriterBuilder<Buffer> {
-    fn buffer() -> Self {
+    pub fn buffer() -> Self {
         Self(Rc::new(crate::term::buf))
     }
 }

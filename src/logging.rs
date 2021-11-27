@@ -72,8 +72,7 @@ pub(crate) fn log_wip_write(
         wip_path,
         path,
     )?;
-    snippet(buf, Yellow, string)?;
-    colored!(buf, "\n")
+    snippet(buf, Yellow, string)
 }
 
 pub(crate) fn log_overwrite(buf: &mut impl WriteColor, path: &Path, string: &str) -> io::Result<()> {
@@ -81,14 +80,13 @@ pub(crate) fn log_overwrite(buf: &mut impl WriteColor, path: &Path, string: &str
 
     colored!(
         buf,
-        "{}{}wip\n\nNOTE{}: writing the following output to {}.\n",
+        "{}{}wip\n\nNOTE{}: writing the following output to {}.",
         reset!(),
         fg!(Some(Yellow)),
         reset!(),
         path
     )?;
-    snippet(buf, Yellow, string)?;
-    colored!(buf, "\n")
+    snippet(buf, Yellow, string)
 }
 
 pub(crate) fn mismatch(log: &mut impl WriteColor, expected: &str, actual: &str) -> io::Result<()> {
@@ -117,7 +115,6 @@ pub(crate) fn log_snapshot(log: &mut impl WriteColor, color: Color, header: &str
     if !snapshot.is_empty() {
         colored!(log, "{}{}{}:", bold!(true), fg!(Some(color)), header)?;
         snippet(log, color, &normalize::trim(snapshot))?;
-        colored!(log, "\n")?;
     }
     Ok(())
 }
@@ -125,7 +122,7 @@ pub(crate) fn log_snapshot(log: &mut impl WriteColor, color: Color, header: &str
 fn snippet(log: &mut impl WriteColor, color: Color, content: &str) -> io::Result<()> {
     let dotted_line = "┈".repeat(60);
 
-    colored!(log, "{}{}{}\n", reset!(), fg!(Some(color)), dotted_line)?;
+    colored!(log, "\n{}{}{}\n", reset!(), fg!(Some(color)), dotted_line)?;
 
     // Color one line at a time because Travis does not preserve color setting
     // across output lines.
