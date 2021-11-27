@@ -46,7 +46,6 @@ impl BatchRunResult {
 
 #[derive(Debug, Error)]
 pub enum EntryFailed {
-    // TODO - include error message?
     #[error("Entry should compile, but compilation failed; error message:\n{0}")]
     ShouldCompile(String),
     #[error("Entry should not compile, but it compiled successfully")]
