@@ -1,40 +1,29 @@
 use termcolor::{
-    Buffer,
     Color::{self, *},
+    WriteColor
 };
 use termcolor_output::colored;
 
 use crate::entry::{Entry, Expected};
 use crate::normalize;
-use crate::term;
 
 use std::io;
 use std::path::Path;
 
-pub(crate) enum Level {
-    Fail,
-    Warn,
-}
-
-pub(crate) use self::Level::*;
-
-// This function is called if there are no entries, so it will create the buffer itself,
-// not expecting it from caller.
-pub(crate) fn no_entries() -> io::Result<Buffer> {
-    let mut out = term::buf();
+pub(crate) fn no_entries(log: &mut impl WriteColor) -> io::Result<()> {
     colored!(
-        out,
+        log,
         "{}{}No entries were provided to runner. Maybe the files are not created yet, or the glob path is wrong.\n{}",
         reset!(), fg!(Some(Yellow)), reset!()
     )?;
-    Ok(out)
+    Ok(())
 }
 
-pub(crate) fn ok(buf: &mut Buffer) -> io::Result<()> {
-    colored!(buf, "{}ok{}\n", fg!(Some(Green)), reset!())
+pub(crate) fn ok(log: &mut impl WriteColor) -> io::Result<()> {
+    colored!(log, "{}ok{}\n", fg!(Some(Green)), reset!())
 }
 
-pub(crate) fn log_entry_start(entry: &Entry, log: &mut Buffer) -> io::Result<()> {
+pub(crate) fn log_entry_start(entry: &Entry, log: &mut impl WriteColor) -> io::Result<()> {
     let display_name = entry
         .path()
         .file_name()
@@ -49,11 +38,11 @@ pub(crate) fn log_entry_start(entry: &Entry, log: &mut Buffer) -> io::Result<()>
     write_entry_header(log, &display_name, expected)
 }
 
-pub(crate) fn log_entry_fail_to_start(entry: &Entry, buf: &mut Buffer) -> io::Result<()> {
+pub(crate) fn log_entry_fail_to_start(entry: &Entry, buf: &mut impl WriteColor) -> io::Result<()> {
     write_entry_header(buf, &entry.path().as_os_str().to_string_lossy(), "")
 }
 
-fn write_entry_header(buf: &mut Buffer, name: &str, expected: &str) -> io::Result<()> {
+fn write_entry_header(buf: &mut impl WriteColor, name: &str, expected: &str) -> io::Result<()> {
     colored!(
         buf,
         "{}batch entry {}{}{}{} ... ",
@@ -66,7 +55,7 @@ fn write_entry_header(buf: &mut Buffer, name: &str, expected: &str) -> io::Resul
 }
 
 pub(crate) fn log_wip_write(
-    buf: &mut Buffer,
+    buf: &mut impl WriteColor,
     wip_path: &Path,
     path: &Path,
     string: &str,
@@ -87,7 +76,7 @@ pub(crate) fn log_wip_write(
     colored!(buf, "\n")
 }
 
-pub(crate) fn log_overwrite(buf: &mut Buffer, path: &Path, string: &str) -> io::Result<()> {
+pub(crate) fn log_overwrite(buf: &mut impl WriteColor, path: &Path, string: &str) -> io::Result<()> {
     let path = path.to_string_lossy();
 
     colored!(
@@ -102,53 +91,38 @@ pub(crate) fn log_overwrite(buf: &mut Buffer, path: &Path, string: &str) -> io::
     colored!(buf, "\n")
 }
 
-/* TODO - I'll probably want to implement it on `Mismatch` itself
-pub(crate) fn mismatch(expected: &str, actual: &str) {
-    term::bold_color(Red);
-    println!("mismatch");
-    term::reset();
-    println!();
-    term::bold_color(Blue);
-    println!("EXPECTED:");
-    snippet(Blue, expected);
-    println!();
-    term::bold_color(Red);
-    println!("ACTUAL OUTPUT:");
-    snippet(Red, actual);
-    println!();
+pub(crate) fn mismatch(log: &mut impl WriteColor, expected: &str, actual: &str) -> io::Result<()> {
+    colored!(log, "{}{}mismatch{}\n\n", bold!(true), fg!(Some(Red)), reset!())?;
+    log_snapshot(log, Blue, "EXPECTED", expected.as_bytes())?;
+    log_snapshot(log, Red, "ACTUAL", actual.as_bytes())?;
+    Ok(())
 }
-*/
 
-pub(crate) fn build_status_mismatch(log: &mut Buffer) -> io::Result<()> {
+pub(crate) fn build_status_mismatch(log: &mut impl WriteColor) -> io::Result<()> {
     colored!(log, "{}{}{}error: {}", reset!(), bold!(true), fg!(Some(Red)), bold!(false))
 }
 
-pub(crate) fn unexpected_build_success(log: &mut Buffer) -> io::Result<()> {
+pub(crate) fn unexpected_build_success(log: &mut impl WriteColor) -> io::Result<()> {
     build_status_mismatch(log)?;
     colored!(log, "Expected test case to fail to compile, but it succeeded.{}\n", reset!())
 }
 
-pub(crate) fn unexpected_build_error(log: &mut Buffer, error: &[u8]) -> io::Result<()> {
+pub(crate) fn unexpected_build_error(log: &mut impl WriteColor, error: &[u8]) -> io::Result<()> {
     build_status_mismatch(log)?;
     colored!(log, "Entry failed to build; compiler output:{}\n", reset!())?;
     snippet(log, Red, &normalize::trim(error))
 }
 
-pub(crate) fn log_snapshot(log: &mut Buffer, level: Level, snapshot: &[u8]) -> io::Result<()> {
-    let color = match level {
-        Fail => Red,
-        Warn => Yellow,
-    };
-
+pub(crate) fn log_snapshot(log: &mut impl WriteColor, color: Color, header: &str, snapshot: &[u8]) -> io::Result<()> {
     if !snapshot.is_empty() {
-        colored!(log, "{}{}STDOUT:", bold!(true), fg!(Some(color)))?;
+        colored!(log, "{}{}{}:", bold!(true), fg!(Some(color)), header)?;
         snippet(log, color, &normalize::trim(snapshot))?;
         colored!(log, "\n")?;
     }
     Ok(())
 }
 
-fn snippet(log: &mut Buffer, color: Color, content: &str) -> io::Result<()> {
+fn snippet(log: &mut impl WriteColor, color: Color, content: &str) -> io::Result<()> {
     let dotted_line = "┈".repeat(60);
 
     colored!(log, "{}{}{}\n", reset!(), fg!(Some(color)), dotted_line)?;

@@ -2,18 +2,18 @@ use crate::term;
 use glob::{GlobError, PatternError};
 use std::collections::HashMap;
 use std::io;
-use termcolor::Buffer;
+use termcolor::{Buffer, StandardStream, WriteColor};
 
 pub mod error;
 use error::*;
 
-pub enum BatchRunResult {
-    NoEntries(Option<Buffer>),
-    ResultsMap(HashMap<String, EntryOutput>),
+pub enum BatchRunResult<W: WriteColor = StandardStream> {
+    NoEntries(Option<W>),
+    ResultsMap(HashMap<String, EntryOutput<W>>),
 }
 pub type BatchResult<T = BatchRunResult> = std::result::Result<T, BatchError>;
 
-impl BatchRunResult {
+impl<W: WriteColor> BatchRunResult<W> {
     pub fn errors(&self) -> Option<Vec<(&String, &EntryFailed)>> {
         if let BatchRunResult::ResultsMap(map) = self {
             Some(
@@ -43,6 +43,8 @@ impl BatchRunResult {
             panic!("Assertion failed, see errors in stderr above");
         }
     }
+}
+impl BatchRunResult<Buffer> {
     pub fn print_all(&mut self) -> std::result::Result<(), PrintError> {
         match self {
             BatchRunResult::NoEntries(buf) => term::print(buf.take()),
@@ -52,12 +54,12 @@ impl BatchRunResult {
 }
 
 pub type EntryResult<T = ()> = std::result::Result<T, EntryFailed>;
-pub struct EntryOutput {
+pub struct EntryOutput<W: WriteColor> {
     res: EntryResult,
-    buf: Option<Buffer>,
+    buf: Option<W>,
 }
-impl EntryOutput {
-    pub(crate) fn new(res: EntryResult, buf: Buffer) -> Self {
+impl<W: WriteColor> EntryOutput<W> {
+    pub(crate) fn new(res: EntryResult, buf: W) -> Self {
         Self {
             res,
             buf: Some(buf),
@@ -69,6 +71,8 @@ impl EntryOutput {
     pub fn err(&self) -> Option<&EntryFailed> {
         self.res.as_ref().err()
     }
+}
+impl EntryOutput<Buffer> {
     pub fn print(&mut self) -> std::result::Result<(), PrintError> {
         term::print(self.buf.take())
     }

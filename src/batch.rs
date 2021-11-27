@@ -43,7 +43,7 @@ impl Drop for Batch {
             self.runner
                 .borrow_mut()
                 .run()
-                .map(|mut res| res.print_all().unwrap_or_else(|err| println!("{}", err)))
+                .map(|_| ())
                 .unwrap_or_else(|err| println!("{}", err));
         }
     }

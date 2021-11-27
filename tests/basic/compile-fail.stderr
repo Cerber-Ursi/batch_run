@@ -1,5 +1,5 @@
 error: ERROR
- --> tests/ui/compile-fail-0.rs:1:1
+ --> tests/basic/compile-fail.rs:1:1
   |
 1 | compile_error!("ERROR");
   | ^^^^^^^^^^^^^^^^^^^^^^^^

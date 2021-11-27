@@ -39,10 +39,6 @@ impl PreBinary {
                 break;
             }
         }
-        println!(
-            "Creating pre-binary at {:?}",
-            BIN_DIR.join(&name).with_extension("rs")
-        );
         write(BIN_DIR.join(&name).with_extension("rs"), b"fn main() {}")?;
         Ok(PreBinary { name, bin_created })
     }
@@ -77,7 +73,6 @@ impl PreBinary {
 
 impl Drop for PreBinary {
     fn drop(&mut self) {
-        println!("Dropping pre-binary");
         remove_file(BIN_DIR.join(&self.name).with_extension("rs")).unwrap_or_else(|_| {
             eprintln!(
                 "Unable to remove temporary file {}, please check it and remove manually",

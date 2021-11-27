@@ -1,5 +1,6 @@
-use crate::result::{error::BatchError, BatchResult, error::ConfigError};
-use std::env;
+use crate::result::{error::BatchError, error::ConfigError, BatchResult};
+use std::{env, rc::Rc};
+use termcolor::{Buffer, ColorChoice, StandardStream, WriteColor};
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Update {
@@ -28,22 +29,73 @@ impl Update {
     }
 }
 
-#[derive(Default)]
-pub struct Config {
-    update_mode: Update,
+#[derive(Clone)]
+pub struct WriterBuilder<W: WriteColor>(Rc<dyn FnOnce() -> W>);
+
+impl<W: WriteColor> WriterBuilder<W> {
+    pub fn new(inner: Box<dyn FnOnce() -> W>) -> Self
+    where
+        W: 'static,
+    {
+        Self(Rc::new(inner))
+    }
+    pub(crate) fn build(&self) -> W {
+        self.0()
+    }
+}
+impl Default for WriterBuilder<StandardStream> {
+    fn default() -> Self {
+        Self(Rc::new(|| StandardStream::stderr(ColorChoice::Always)))
+    }
+}
+impl WriterBuilder<Buffer> {
+    fn buffer() -> Self {
+        Self(Rc::new(crate::term::buf))
+    }
 }
 
-impl Config {
+pub struct Config<W: WriteColor> {
+    update_mode: Update,
+    writer: WriterBuilder<W>,
+}
+
+impl Default for Config<StandardStream> {
+    fn default() -> Self {
+        Self {
+            update_mode: Default::default(),
+            writer: Default::default(),
+        }
+    }
+}
+
+impl Config<StandardStream> {
     pub fn from_env() -> BatchResult<Self> {
         Ok(Self {
             update_mode: Update::env()?,
+            writer: WriterBuilder::default(),
         })
     }
-    #[allow(dead_code)]
-    pub fn with_update_mode(update_mode: Update) -> Self {
-        Self { update_mode }
+}
+impl<W: WriteColor> Config<W> {
+    pub fn with_update_mode(self, update_mode: Update) -> Self {
+        Self {
+            update_mode,
+            ..self
+        }
     }
     pub fn update_mode(&self) -> Update {
         self.update_mode
+    }
+    pub fn with_writer<W2: WriteColor>(self, writer: WriterBuilder<W2>) -> Config<W2> {
+        Config {
+            writer,
+            update_mode: self.update_mode,
+        }
+    }
+    pub fn with_buffer(self) -> Config<Buffer> {
+        Config { update_mode: self.update_mode, writer: WriterBuilder::buffer() }
+    }
+    pub fn writer(&self) -> WriterBuilder<W> {
+        self.writer.clone()
     }
 }
