@@ -1,7 +1,7 @@
 use termcolor::Color::{self, *};
 
 use super::{Entry, Expected};
-use crate::error::Error;
+use crate::batch_result::EntryOutcome;
 use crate::normalize;
 use crate::term;
 
@@ -27,15 +27,15 @@ pub(crate) use self::Level::*;
 //     println!();
 // }
 
-pub(crate) fn test_fail(err: Error) {
-    if err.already_printed() {
-        return;
-    }
+pub(crate) fn test_fail(err: EntryOutcome) {
+    // if err.already_printed() {
+    //     return;
+    // }
 
     term::bold_color(Red);
     println!("error");
     term::color(Red);
-    println!("{}", err);
+    // println!("{}", err);
     term::reset();
     println!();
 }
@@ -124,20 +124,20 @@ pub(crate) fn should_not_have_compiled() {
 //     println!();
 // }
 
-// pub(crate) fn mismatch(expected: &str, actual: &str) {
-//     term::bold_color(Red);
-//     println!("mismatch");
-//     term::reset();
-//     println!();
-//     term::bold_color(Blue);
-//     println!("EXPECTED:");
-//     snippet(Blue, expected);
-//     println!();
-//     term::bold_color(Red);
-//     println!("ACTUAL OUTPUT:");
-//     snippet(Red, actual);
-//     println!();
-// }
+pub(crate) fn mismatch(expected: &str, actual: &str) {
+    term::bold_color(Red);
+    println!("mismatch");
+    term::reset();
+    println!();
+    term::bold_color(Blue);
+    println!("EXPECTED:");
+    snippet(Blue, expected);
+    println!();
+    term::bold_color(Red);
+    println!("ACTUAL OUTPUT:");
+    snippet(Red, actual);
+    println!();
+}
 
 pub(crate) fn output(warnings: &str, output: &Output) {
     let success = output.status.success();

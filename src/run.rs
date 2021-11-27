@@ -6,8 +6,9 @@ use super::{Entry, Expected, Runner};
 use crate::binary::{BinaryBuilder, PreBinary};
 use crate::cargo_rustc;
 // use crate::env::Update;
-use crate::error::{Error, Result};
+use crate::batch_result::{Warning, Error, EntryOutcome, Result};
 use crate::message::{self, Fail, Warn};
+use crate::mismatch::Mismatch;
 use crate::normalize::{self, Variations};
 
 impl Runner {
@@ -37,10 +38,11 @@ impl Runner {
         print!("\n\n");
 
         if failures > 0 {
-            Err(Error::Batch(format!(
-                "{} of {} tests failed",
-                failures, len
-            )))?;
+            // Err(Error::Batch(format!(
+            //     "{} of {} tests failed",
+            //     failures, len
+            // )))?;
+            // TODO
         }
         Ok(())
     }
@@ -51,20 +53,10 @@ impl Entry {
         message::begin_test(self, true); // TODO
         check_exists(&self.path)?;
 
-        let output = cargo_rustc::build_test(builder, &self.path, self.expected.is_run_pass())?;
+        let output = cargo_rustc::build_entry(builder, &self.path, self.expected.is_run_pass())?;
         let success = output.status.success();
         let stdout = output.stdout;
-        let stderr = normalize::diagnostics(output.stderr).map(|stderr| {
-            stderr
-                // .replace(&name.0, "$CRATE")
-                .replace(
-                    env::var_os("CARGO_MANIFEST_DIR")
-                        .expect("CARGO_MANIFEST_DIR not found")
-                        .to_string_lossy()
-                        .as_ref(),
-                    "$DIR",
-                )
-        });
+        let stderr = normalize::diagnostics(output.stderr);
 
         let check = match self.expected {
             Expected::RunPass => Entry::check_pass,
@@ -83,16 +75,16 @@ impl Entry {
         let preferred = variations.preferred();
         if !success {
             message::failed_to_build(preferred);
-            return Err(Error::CargoFail);
+            Err(Error::CargoFail)?;
         }
 
-        let mut output = cargo_rustc::run_test()?;
+        let mut output = cargo_rustc::run_entry()?;
         output.stdout.splice(..0, build_stdout);
         message::output(preferred, &output);
         if output.status.success() {
             Ok(())
         } else {
-            Err(Error::RunFailed)
+            Err(Error::RunFailed(String::from_utf8_lossy(&output.stderr).to_string()))?
         }
     }
 
@@ -108,7 +100,7 @@ impl Entry {
             message::should_not_have_compiled();
             message::fail_output(Fail, &build_stdout);
             message::warnings(preferred);
-            return Err(Error::ShouldNotHaveCompiled);
+            Err(Error::ShouldNotHaveCompiled)?;
         }
 
         let stderr_path = self.path.with_extension("stderr");
@@ -147,8 +139,8 @@ impl Entry {
 
         // match project.update {
         //     Update::Wip => {
-        //         message::mismatch(&expected, preferred);
-        //         Err(Error::Mismatch)
+                message::mismatch(&expected, preferred);
+                Err(Error::Mismatch(Mismatch::new()).into())
         //     }
         //     Update::Overwrite => {
         //         message::overwrite_stderr(&stderr_path, preferred);
@@ -156,7 +148,6 @@ impl Entry {
         //         Ok(())
         //     }
         // }
-        Ok(())
     }
 }
 
@@ -166,20 +157,20 @@ fn check_exists(path: &Path) -> Result<()> {
     }
     match File::open(path) {
         Ok(_) => Ok(()),
-        Err(err) => Err(Error::Open(path.to_owned(), err)),
+        Err(err) => Err(Error::Open(path.to_owned(), err))?,
     }
 }
 
 #[derive(Debug)]
 struct ExpandedEntry {
     raw_entry: Entry,
-    error: Option<Error>,
+    error: Option<EntryOutcome>,
 }
 
 fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
     fn glob(pattern: &str) -> Result<Vec<PathBuf>> {
         let mut paths = glob::glob(pattern)?
-            .map(|entry| entry.map_err(Error::from))
+            .map(|entry| entry.map_err(EntryOutcome::from))
             .collect::<Result<Vec<PathBuf>>>()?;
         paths.sort();
         Ok(paths)

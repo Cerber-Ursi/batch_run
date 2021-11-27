@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::batch_result::{Error, Result};
 use std::env;
 
 #[derive(PartialEq, Debug)]
@@ -24,7 +24,7 @@ impl Update {
         match var.as_os_str().to_str() {
             Some("wip") => Ok(Update::Wip),
             Some("overwrite") => Ok(Update::Overwrite),
-            _ => Err(Error::UpdateVar(var)),
+            _ => Err(Error::UpdateVar(var))?,
         }
     }
 }
