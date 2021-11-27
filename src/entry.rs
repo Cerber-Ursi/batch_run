@@ -24,9 +24,9 @@ impl Entry {
             Expected::RunMatch => {
                 // early exit if the entry has not compiled
                 if !output.status.success() {
-                    Err(EntryFailed::ShouldCompile(
+                    return Err(EntryFailed::ShouldCompile(
                         String::from_utf8_lossy(&output.stderr).to_string(),
-                    ))?;
+                    ));
                 }
                 output = cargo_rustc::run_entry()?;
                 check_run_match
@@ -43,7 +43,7 @@ fn check_exists(path: &Path) -> EntryResult<()> {
     }
     match File::open(path) {
         Ok(_) => Ok(()),
-        Err(err) => Err(EntryError::Open(path.to_owned(), err))?,
+        Err(err) => Err(EntryError::Open(path.to_owned(), err).into()),
     }
 }
 
@@ -98,22 +98,22 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 
 impl ExpandedEntry {
     pub fn run(self, builder: &BinaryBuilder, cfg: &Config) -> EntryOutput {
-        let Self { error, raw_entry, mut messages } = self;
+        let Self {
+            error,
+            raw_entry,
+            mut messages,
+        } = self;
         let res = match error {
             None => raw_entry.run(builder, cfg, &mut messages),
             Some(error) => {
-            //    message::begin_entry(&self.raw_entry, false);
+                //    message::begin_entry(&self.raw_entry, false);
                 Err(error)
             }
         };
-        EntryOutput {
-            res,
-            buf: messages,
-        }
+        EntryOutput::new(res, messages)
     }
 
     pub fn path(&self) -> &Path {
         &self.raw_entry.path
     }
 }
-

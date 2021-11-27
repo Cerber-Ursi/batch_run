@@ -23,7 +23,7 @@ impl Update {
         match var.as_os_str().to_str() {
             Some("wip") => Ok(Update::Wip),
             Some("overwrite") => Ok(Update::Overwrite),
-            _ => Err(BatchError::UpdateVar(var))?,
+            _ => Err(BatchError::UpdateVar(var)),
         }
     }
 }

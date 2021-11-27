@@ -17,7 +17,7 @@ lazy_static! {
         OsString::from("src"),
         OsString::from("bin")
     ]
-    .into_iter()
+    .iter()
     .collect();
 }
 
