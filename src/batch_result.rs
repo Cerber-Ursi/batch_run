@@ -18,7 +18,7 @@ impl BatchRunResult {
         if let BatchRunResult::ResultsMap(map) = self {
             Some(
                 map.iter()
-                    .filter_map(|(file, res)| res.err().as_ref().map(|err| (file, err)))
+                    .filter_map(|(file, res)| res.err().map(|err| (file, err)))
                     .collect(),
             )
         } else {
@@ -47,7 +47,6 @@ impl BatchRunResult {
 
 #[derive(Debug, Error)]
 pub enum EntryFailed {
-    // TODO - include error message?
     #[error("Entry should compile, but compilation failed; error message:\n{0}")]
     ShouldCompile(String),
     #[error("Entry should not compile, but it compiled successfully")]
@@ -106,15 +105,15 @@ pub enum EntryError {
 
 pub type EntryResult<T = ()> = std::result::Result<T, EntryFailed>;
 pub struct EntryOutput {
-    res: EntryResult,
-    buf: Buffer,
+    pub res: EntryResult,
+    pub buf: Buffer,
 }
 impl EntryOutput {
     fn is_ok(&self) -> bool {
         self.res.is_ok()
     }
-    fn err(&self) -> &Option<EntryFailed> {
-        &self.res.err()
+    fn err(&self) -> Option<&EntryFailed> {
+        self.res.as_ref().err()
     }
 }
 

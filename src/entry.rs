@@ -1,6 +1,7 @@
+use termcolor::Buffer;
+
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use termcolor::Buffer;
 
 use super::{Entry, Expected};
 use crate::batch_result::{EntryError, EntryFailed, EntryOutput, EntryResult};
@@ -13,7 +14,7 @@ use crate::term;
 
 impl Entry {
     fn run(&self, builder: &BinaryBuilder, cfg: &Config, output: &mut Buffer) -> EntryResult<()> {
-        message::begin_test(self, true); // TODO
+        message::begin_entry(self, output, true)?; // TODO
         check_exists(&self.path)?;
 
         let mut output =
@@ -97,20 +98,17 @@ pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 
 impl ExpandedEntry {
     pub fn run(self, builder: &BinaryBuilder, cfg: &Config) -> EntryOutput {
-        let res = self.run_impl(builder, cfg);
-        EntryOutput {
-            res,
-            buf: self.messages,
-        }
-    }
-    fn run_impl(&mut self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
-        match self.error {
-            None => self.raw_entry.run(builder, cfg, &mut self.messages),
+        let Self { error, raw_entry, mut messages } = self;
+        let res = match error {
+            None => raw_entry.run(builder, cfg, &mut messages),
             Some(error) => {
-                let show_expected = false;
-                message::begin_test(&self.raw_entry, show_expected);
+            //    message::begin_entry(&self.raw_entry, false);
                 Err(error)
             }
+        };
+        EntryOutput {
+            res,
+            buf: messages,
         }
     }
 
@@ -118,3 +116,4 @@ impl ExpandedEntry {
         &self.raw_entry.path
     }
 }
+
