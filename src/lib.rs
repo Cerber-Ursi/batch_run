@@ -79,9 +79,6 @@
 //! (TODO)
 //!
 
-#[macro_use]
-mod term;
-
 mod batch_result;
 mod binary;
 mod cargo_rustc;
@@ -93,6 +90,7 @@ mod normalize;
 mod runner;
 mod rustflags;
 mod snapshot;
+mod term;
 
 pub use crate::batch_result::*;
 

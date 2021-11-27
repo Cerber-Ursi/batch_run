@@ -1,44 +1,23 @@
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{PoisonError, RwLock, RwLockWriteGuard};
 
 use lazy_static::lazy_static;
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream as Stream, WriteColor};
+use termcolor::{
+    Buffer, BufferWriter, ColorChoice, StandardStream, 
+};
 
 lazy_static! {
-    static ref TERM: Mutex<Stream> = Mutex::new(Stream::stderr(ColorChoice::Auto));
+    static ref WRITER: BufferWriter = BufferWriter::stdout(ColorChoice::Auto);
+    static ref TERM: RwLock<StandardStream> = RwLock::new(StandardStream::stdout(ColorChoice::Auto));
 }
 
-pub fn lock() -> MutexGuard<'static, Stream> {
-    TERM.lock().unwrap_or_else(PoisonError::into_inner)
+pub fn buf() -> Buffer {
+    WRITER.buffer()
 }
 
-pub fn bold() {
-    let _ = lock().set_color(ColorSpec::new().set_bold(true));
+pub fn print(buf: Buffer) -> std::io::Result<()> {
+    WRITER.print(&buf)
 }
 
-pub fn color(color: Color) {
-    let _ = lock().set_color(ColorSpec::new().set_fg(Some(color)));
-}
-
-pub fn bold_color(color: Color) {
-    let _ = lock().set_color(ColorSpec::new().set_bold(true).set_fg(Some(color)));
-}
-
-pub fn reset() {
-    let _ = lock().reset();
-}
-
-#[deny(unused_macros)]
-macro_rules! print {
-    ($($args:tt)*) => {{
-        use std::io::Write;
-        let _ = std::write!($crate::term::lock(), $($args)*);
-    }};
-}
-
-#[deny(unused_macros)]
-macro_rules! println {
-    ($($args:tt)*) => {{
-        use std::io::Write;
-        let _ = std::writeln!($crate::term::lock(), $($args)*);
-    }};
+pub fn direct<'a>() -> RwLockWriteGuard<'a, StandardStream> {
+    TERM.write().unwrap_or_else(PoisonError::into_inner)
 }
