@@ -1,67 +1,17 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use super::{Entry, Expected, Runner};
-use crate::batch_result::{BatchResult, BatchRunResult, EntryError, EntryFailed, EntryResult};
-use crate::binary::{BinaryBuilder, PreBinary};
+use super::{Entry, Expected};
+use crate::batch_result::{EntryError, EntryFailed, EntryResult};
+use crate::binary::BinaryBuilder;
 use crate::cargo_rustc;
 use crate::config::Config;
 use crate::message::{self, Fail, Warn};
 use crate::mismatch::SingleMismatch;
 use crate::normalize::{self, Variations};
 
-impl Runner {
-    pub fn run(&mut self) -> BatchResult<BatchRunResult> {
-        let config = Config::from_env()?;
-        self.run_with_config(config)
-    }
-    pub fn run_with_config(&mut self, cfg: Config) -> BatchResult<BatchRunResult> {
-        let cwd = std::env::current_dir()?;
-        std::env::set_current_dir(
-            std::env::var_os("CARGO_MANIFEST_DIR").expect("Couldn't get manifest dir"),
-        )?;
-        let res = self.run_impl(cfg);
-        std::env::set_current_dir(cwd)?;
-        res
-    }
-    fn run_impl(&mut self, cfg: Config) -> BatchResult<BatchRunResult> {
-        let binary = PreBinary::new()?;
-
-        let entries = expand_globs(&self.entries);
-
-        let builder = binary.into_builder()?;
-
-        print!("\n\n");
-
-        let len = entries.len();
-        let mut failures = 0;
-
-        if entries.is_empty() {
-            message::no_tests_enabled();
-        } else {
-            for entry in entries {
-                if let Err(err) = entry.run_on(&builder) {
-                    failures += 1;
-                    message::test_fail(err);
-                }
-            }
-        }
-
-        print!("\n\n");
-
-        if failures > 0 {
-            // Err(Error::Batch(format!(
-            //     "{} of {} tests failed",
-            //     failures, len
-            // )))?;
-            // TODO
-        }
-        Ok(BatchRunResult::NoEntries) // FIXME
-    }
-}
-
 impl Entry {
-    fn run(&self, builder: &BinaryBuilder) -> EntryResult<()> {
+    fn run(&self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
         message::begin_test(self, true); // TODO
         check_exists(&self.path)?;
 
@@ -175,12 +125,12 @@ fn check_exists(path: &Path) -> EntryResult<()> {
 }
 
 #[derive(Debug)]
-struct ExpandedEntry {
+pub struct ExpandedEntry {
     raw_entry: Entry,
     error: Option<EntryFailed>,
 }
 
-fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
+pub(crate) fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
     fn glob(pattern: &str) -> EntryResult<Vec<PathBuf>> {
         let mut paths = glob::glob(pattern)?
             .map(|entry| entry.map_err(EntryFailed::from))
@@ -222,9 +172,9 @@ fn expand_globs(tests: &[Entry]) -> Vec<ExpandedEntry> {
 }
 
 impl ExpandedEntry {
-    fn run_on(self, builder: &BinaryBuilder) -> EntryResult<()> {
+    pub fn run(self, builder: &BinaryBuilder, cfg: &Config) -> EntryResult<()> {
         match self.error {
-            None => self.raw_entry.run(builder),
+            None => self.raw_entry.run(builder, cfg),
             Some(error) => {
                 let show_expected = false;
                 message::begin_test(&self.raw_entry, show_expected);

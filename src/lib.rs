@@ -86,10 +86,11 @@ mod batch_result;
 mod binary;
 mod cargo_rustc;
 mod config;
+mod entry;
 mod message;
 mod mismatch;
 mod normalize;
-mod run;
+mod runner;
 mod rustflags;
 
 use crate::batch_result::BatchResult;
