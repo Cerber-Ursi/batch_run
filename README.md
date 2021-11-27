@@ -53,7 +53,7 @@ A compile\_fail case that fails to fail to compile is also a failure.
 In the run_pass cases, we not only check that the code compiles, but also actually run it
 and match the stdout/stderr output with the corresponding _*.stdout_/_*.stderr_ files.
 
-You can mix compile_faiil and run_pass cases in one batch:
+You can mix compile_fail and run_pass cases in one batch:
 
 ```rust
 fn main() {
